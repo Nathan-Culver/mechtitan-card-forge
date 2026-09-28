@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
+  <title>MechTitan Card Forge</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" aria-label="MechTitan Card Forge">
+      <span class="brand-mark" aria-hidden="true">MT</span>
+      <span><strong>MECHTITAN</strong><small>CARD FORGE</small></span>
+    </div>
+    <nav class="top-actions" aria-label="Project actions">
+      <button id="undoBtn" class="icon-btn" title="Undo" aria-label="Undo">↶</button>
+      <button id="redoBtn" class="icon-btn" title="Redo" aria-label="Redo">↷</button>
+      <button id="importProjectBtn">Import project</button>
+      <button id="exportProjectBtn">Export set</button>
+      <button id="saveBtn" class="primary">Save card</button>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <aside class="panel editor-panel" aria-label="Card editor">
+      <div class="panel-heading">
+        <div><span class="eyebrow">UNIT TEMPLATE</span><h1>Card editor</h1></div>
+        <span id="saveStatus" class="save-status">Saved locally</span>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Editor sections">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="content">Content</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="art">Art</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="style">Style</button>
+      </div>
+
+      <form id="cardForm" autocomplete="off">
+        <section class="tab-page active" data-page="content">
+          <div class="field full"><label for="name">Card name</label><input id="name" name="name" maxlength="34" value="NAGA D"></div>
+          <div class="grid-2">
+            <div class="field"><label for="construction">Construction <span>0–20</span></label><input id="construction" name="construction" type="number" min="0" max="20" value="8"></div>
+            <div class="field"><label for="operation">Operation <span>0–4</span></label><input id="operation" name="operation" type="number" min="0" max="4" value="2"></div>
+          </div>
+          <fieldset class="asset-fieldset">
+            <legend>Asset costs <span>blank or 1–4</span></legend>
+            <div class="asset-grid">
+              <label class="asset asset-l"><b>L</b><input name="assetL" type="number" min="1" max="4" placeholder="—" value="3"></label>
+              <label class="asset asset-p"><b>P</b><input name="assetP" type="number" min="1" max="4" placeholder="—"></label>
+              <label class="asset asset-s"><b>S</b><input name="assetS" type="number" min="1" max="4" placeholder="—"></label>
+              <label class="asset asset-t"><b>T</b><input name="assetT" type="number" min="1" max="4" placeholder="—"></label>
+              <label class="asset asset-u"><b>U</b><input name="assetU" type="number" min="1" max="4" placeholder="—" value="3"></label>
+            </div>
+          </fieldset>
+          <div class="field full"><label for="loadout">Loadout line</label><input id="loadout" name="loadout" maxlength="70" value="80 tons • Med Laser • 4 SRMs • 2 Arrow IVs"></div>
+          <div class="field full"><label for="traits">Traits</label><input id="traits" name="traits" maxlength="80" value="Mech • Artillery • Omni • Clan • Wolf"></div>
+          <div class="field full"><label for="rules">Rules text</label><textarea id="rules" name="rules" rows="4">Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.</textarea></div>
+          <div class="field full"><label for="flavor">Flavor text</label><textarea id="flavor" name="flavor" rows="3">Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.</textarea></div>
+          <div class="grid-3">
+            <div class="field"><label for="speed">Speed</label><select id="speed" name="speed"><option>XS</option><option>S</option><option selected>M</option><option>F</option><option>XF</option></select></div>
+            <div class="field"><label for="attack">Attack <span>0–20</span></label><input id="attack" name="attack" type="number" min="0" max="20" value="7"></div>
+            <div class="field"><label for="armor">Armor <span>0–5</span></label><input id="armor" name="armor" type="number" min="0" max="5" value="2"></div>
+          </div>
+          <div class="grid-3">
+            <div class="field"><label for="structure">Structure <span>1–30</span></label><input id="structure" name="structure" type="number" min="1" max="30" value="5"></div>
+            <div class="field"><label for="cycle">Cycle <span>blank/0–3</span></label><input id="cycle" name="cycle" type="number" min="0" max="3" value="2"></div>
+            <div class="field"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option selected>Uncommon</option><option>Rare</option><option>Unique</option></select></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label for="faction">Faction</label><input id="faction" name="faction" value="Clan Wolf"></div>
+            <div class="field"><label for="artist">Artist credit</label><input id="artist" name="artist" placeholder="Artist name"></div>
+          </div>
+          <div class="field full"><label for="copyright">Copyright / legal line</label><input id="copyright" name="copyright" placeholder="© 2026 MechTitan TCG"></div>
+          <div class="grid-2">
+            <div class="field"><label for="setCode">Set code</label><input id="setCode" name="setCode" maxlength="8" value="ALPHA"></div>
+            <div class="field"><label for="collector">Collector no.</label><input id="collector" name="collector" maxlength="12" value="001/180"></div>
+          </div>
+        </section>
+
+        <section class="tab-page" data-page="art">
+          <div class="upload-zone">
+            <input id="artFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+            <button id="chooseArtBtn" type="button" class="primary">Choose artwork</button>
+            <p>PNG, JPEG, or WebP. Artwork stays in your browser and exported project file.</p>
+          </div>
+          <div class="field"><label for="artScale">Artwork scale <output id="artScaleOut">100%</output></label><input id="artScale" name="artScale" type="range" min="100" max="220" value="100"></div>
+          <div class="field"><label for="artX">Horizontal position <output id="artXOut">0</output></label><input id="artX" name="artX" type="range" min="-100" max="100" value="0"></div>
+          <div class="field"><label for="artY">Vertical position <output id="artYOut">0</output></label><input id="artY" name="artY" type="range" min="-100" max="100" value="0"></div>
+          <button id="clearArtBtn" type="button">Remove artwork</button>
+          <p class="hint">Tip: the dashed guide marks the 2.5 × 3.5 in trim. Keep important art and text inside it.</p>
+        </section>
+
+        <section class="tab-page" data-page="style">
+          <div class="field"><label for="theme">Frame finish</label><select id="theme" name="theme"><option value="titanium">Titanium blue</option><option value="ember">Ember red</option><option value="royal">Royal violet</option><option value="verdant">Verdant green</option></select></div>
+          <div class="field"><label for="titleSize">Title size <output id="titleSizeOut">100%</output></label><input id="titleSize" name="titleSize" type="range" min="75" max="115" value="100"></div>
+          <label class="toggle-row"><input id="showBleed" type="checkbox" checked><span>Show trim and bleed guides</span></label>
+          <label class="toggle-row"><input id="uppercaseTitle" name="uppercaseTitle" type="checkbox" checked><span>Uppercase card title</span></label>
+          <div class="spec-card"><strong>Print specification</strong><span>Trim: 2.5 × 3.5 in</span><span>Bleed: ⅛ in on every edge</span><span>Export: 600 or 1,200 DPI</span></div>
+        </section>
+      </form>
+    </aside>
+
+    <section class="stage" aria-label="Live card preview">
+      <div class="stage-toolbar">
+        <div><span class="eyebrow">LIVE PREVIEW</span><span id="dimensionsLabel">2.75 × 3.75 in with bleed</span></div>
+        <label class="zoom-control">Zoom <input id="zoom" type="range" min="45" max="100" value="76"><output id="zoomOut">76%</output></label>
+      </div>
+      <div class="card-wrap"><canvas id="cardCanvas" width="660" height="900" aria-label="Rendered MechTitan card preview"></canvas></div>
+      <div class="export-bar">
+        <label>Format <select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="svg">SVG</option></select></label>
+        <label>Resolution <select id="exportDpi"><option value="600">600 DPI</option><option value="1200">1,200 DPI</option></select></label>
+        <button id="exportImageBtn" class="primary">Export card</button>
+      </div>
+    </section>
+
+    <aside class="panel library-panel" aria-label="Card library">
+      <div class="panel-heading compact"><div><span class="eyebrow">LOCAL DATABASE</span><h2>Set library</h2></div><button id="newCardBtn" class="square" title="New card">＋</button></div>
+      <div class="library-tools">
+        <input id="searchCards" type="search" placeholder="Search cards" aria-label="Search cards">
+        <select id="filterFaction" aria-label="Filter by faction"><option value="">All factions</option></select>
+      </div>
+      <div id="cardList" class="card-list" aria-live="polite"></div>
+      <div class="library-footer">
+        <span id="selectionCount">0 selected</span>
+        <button id="duplicateBtn">Duplicate</button>
+        <button id="deleteBtn" class="danger">Delete</button>
+      </div>
+      <div class="bulk-box">
+        <h3>Bulk import</h3>
+        <p>Import CSV, TSV, XLSX, or JSON. Column names are matched automatically.</p>
+        <input id="bulkFile" type="file" accept=".csv,.tsv,.xlsx,.xls,.json" hidden>
+        <div class="button-row"><button id="bulkImportBtn">Choose spreadsheet</button><a href="mechtitan-card-template.csv" download>CSV template</a></div>
+        <button id="exportGroupBtn" class="wide">Export selected images</button>
+      </div>
+    </aside>
+  </main>
+
+  <input id="projectFile" type="file" accept="application/json,.json" hidden>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

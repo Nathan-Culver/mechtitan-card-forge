@@ -1,0 +1,486 @@
+(() => {
+  'use strict';
+
+  const W = 660, H = 900, PPI = 240;
+  const STORAGE_KEY = 'mechtitan-card-forge-v1';
+  const form = document.querySelector('#cardForm');
+  const canvas = document.querySelector('#cardCanvas');
+  const ctx = canvas.getContext('2d');
+  const cardList = document.querySelector('#cardList');
+  const saveStatus = document.querySelector('#saveStatus');
+  const selected = new Set();
+  let cards = [];
+  let currentId = null;
+  let artImage = null;
+  const layerImages = {};
+  const layerSources = {
+    reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
+    operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-ring.svg', assetPill: 'assets/asset-cost-pill.svg',
+    speedPill: 'assets/speed-pill.svg', attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/activation-icon.svg'
+  };
+  let history = [];
+  let historyIndex = -1;
+  let historyTimer = null;
+  let toastTimer = null;
+
+  const defaults = {
+    name: 'UNTITLED UNIT', construction: 0, operation: 0, assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
+    loadout: 'Tonnage • Weapons • Systems', traits: 'Mech • Faction • Role', rules: 'Add rules text.', flavor: '', speed: 'M',
+    attack: 0, armor: 0, structure: 1, cycle: '', rarity: 'Common', faction: '', artist: '', copyright: '© 2026 MechTitan TCG', setCode: 'CORE', collector: '001/001',
+    theme: 'titanium', titleSize: 100, uppercaseTitle: true, artData: '', artScale: 100, artX: 0, artY: 0
+  };
+
+  function preloadLayers() {
+    return Promise.all(Object.entries(layerSources).map(([key, src]) => new Promise(resolve => {
+      const img = new Image(); img.onload = () => { layerImages[key] = img; render(); resolve(); }; img.onerror = resolve; img.src = src;
+    })));
+  }
+
+  const themeMap = {
+    titanium: { dark: '#06111a', mid: '#12334a', edge: '#3fbfe9', glow: '#7ce2ff' },
+    ember: { dark: '#180806', mid: '#512017', edge: '#ef6a3d', glow: '#ffb16f' },
+    royal: { dark: '#13091c', mid: '#382052', edge: '#a875e8', glow: '#d8b8ff' },
+    verdant: { dark: '#06160e', mid: '#17462b', edge: '#43bb77', glow: '#92efb2' }
+  };
+
+  function uid() { return `card-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
+  function clamp(value, min, max, fallback = min) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  }
+  function assetValue(value) { return value === '' || value == null ? '' : clamp(value, 1, 4, 1); }
+  function toast(message) {
+    const el = document.querySelector('#toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+  function slug(text) { return (text || 'mechtitan-card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mechtitan-card'; }
+  function escXml(text) { return String(text ?? '').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c])); }
+
+  function normalizeCard(raw = {}) {
+    const merged = { ...defaults, ...raw };
+    return {
+      ...merged,
+      id: /^[a-z0-9_-]+$/i.test(String(raw.id || '')) ? String(raw.id) : uid(),
+      name: String(merged.name || defaults.name).slice(0, 34),
+      construction: clamp(merged.construction, 0, 20, 0), operation: clamp(merged.operation, 0, 4, 0),
+      assetL: assetValue(merged.assetL), assetP: assetValue(merged.assetP), assetS: assetValue(merged.assetS), assetT: assetValue(merged.assetT), assetU: assetValue(merged.assetU),
+      speed: ['XS','S','M','F','XF'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
+      attack: clamp(merged.attack, 0, 20, 0), armor: clamp(merged.armor, 0, 5, 0), structure: clamp(merged.structure, 1, 30, 1),
+      cycle: merged.cycle === '' || merged.cycle == null ? '' : clamp(merged.cycle, 0, 3, 0),
+      rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique'].includes(merged.rarity) ? merged.rarity : 'Common'),
+      theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
+      uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
+      artScale: clamp(merged.artScale, 100, 220, 100), artX: clamp(merged.artX, -100, 100, 0), artY: clamp(merged.artY, -100, 100, 0)
+    };
+  }
+
+  function getFormData() {
+    const fd = new FormData(form);
+    const obj = Object.fromEntries(fd.entries());
+    obj.uppercaseTitle = document.querySelector('#uppercaseTitle').checked;
+    obj.artData = form.dataset.artData || '';
+    return normalizeCard({ ...obj, id: currentId || uid() });
+  }
+
+  function setFormData(card, push = true) {
+    const c = normalizeCard(card);
+    currentId = c.id;
+    Object.entries(c).forEach(([key, value]) => {
+      const el = form.elements[key];
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = Boolean(value);
+      else el.value = value ?? '';
+    });
+    form.dataset.artData = c.artData || '';
+    loadArt(c.artData || '');
+    updateOutputs();
+    saveStatus.textContent = cards.some(x => x.id === currentId) ? 'Saved locally' : 'New card';
+    if (push) pushHistory();
+    render();
+    renderLibrary();
+  }
+
+  function persist() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, cards, currentId }));
+  }
+
+  function saveCurrent(showToast = true) {
+    const card = getFormData();
+    const index = cards.findIndex(c => c.id === card.id);
+    if (index >= 0) cards[index] = card; else cards.unshift(card);
+    currentId = card.id;
+    persist();
+    renderLibrary();
+    saveStatus.textContent = 'Saved locally';
+    if (showToast) toast('Card saved to this browser');
+    return card;
+  }
+
+  function loadStore() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (stored?.cards?.length) {
+        cards = stored.cards.map(normalizeCard);
+        currentId = cards.some(c => c.id === stored.currentId) ? stored.currentId : cards[0].id;
+        return cards.find(c => c.id === currentId);
+      }
+    } catch (_) { /* use prototype */ }
+    const prototype = normalizeCard({
+      ...defaults, id: uid(), name: 'NAGA D', construction: 8, operation: 2, assetL: 3, assetU: 3,
+      loadout: '80 tons • Med Laser • 4 SRMs • 2 Arrow IVs', traits: 'Mech • Artillery • Omni • Clan • Wolf',
+      rules: 'Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.',
+      flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
+      speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Uncommon', faction: 'Clan Wolf', collector: '001/180'
+    });
+    cards = [prototype]; currentId = prototype.id; persist(); return prototype;
+  }
+
+  function pushHistory() {
+    const snapshot = JSON.stringify(getFormData());
+    if (history[historyIndex] === snapshot) return;
+    history = history.slice(0, historyIndex + 1);
+    history.push(snapshot);
+    if (history.length > 40) history.shift();
+    historyIndex = history.length - 1;
+    updateUndoButtons();
+  }
+  function updateUndoButtons() {
+    document.querySelector('#undoBtn').disabled = historyIndex <= 0;
+    document.querySelector('#redoBtn').disabled = historyIndex >= history.length - 1;
+  }
+  function travelHistory(direction) {
+    const next = historyIndex + direction;
+    if (next < 0 || next >= history.length) return;
+    historyIndex = next;
+    setFormData(JSON.parse(history[historyIndex]), false);
+    saveStatus.textContent = 'Unsaved changes';
+    updateUndoButtons();
+  }
+
+  function updateOutputs() {
+    ['artScale','artX','artY','titleSize'].forEach(id => {
+      const input = document.querySelector(`#${id}`);
+      const out = document.querySelector(`#${id}Out`);
+      if (out) out.textContent = (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
+    });
+    const zoom = document.querySelector('#zoom');
+    document.querySelector('#zoomOut').textContent = `${zoom.value}%`;
+    canvas.style.width = `${Math.round(660 * Number(zoom.value) / 100)}px`;
+  }
+
+  function loadArt(data) {
+    artImage = null;
+    if (!data) { render(); return; }
+    const img = new Image();
+    img.onload = () => { artImage = img; render(); };
+    img.onerror = () => { artImage = null; render(); };
+    img.src = data;
+  }
+
+  function roundedRect(c, x, y, w, h, r) {
+    c.beginPath(); c.roundRect(x, y, w, h, r); return c;
+  }
+  function fitText(c, text, maxWidth, startSize, minSize = 18, weight = 800) {
+    let size = startSize;
+    while (size > minSize) { c.font = `${weight} ${size}px Arial, sans-serif`; if (c.measureText(text).width <= maxWidth) break; size -= 1; }
+    return size;
+  }
+  function wrapLines(c, text, maxWidth, maxLines = 6) {
+    const words = String(text || '').split(/\s+/).filter(Boolean); const lines = []; let line = '';
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (c.measureText(test).width > maxWidth && line) { lines.push(line); line = word; if (lines.length === maxLines - 1) break; }
+      else line = test;
+    }
+    if (line && lines.length < maxLines) lines.push(line);
+    if (words.length && lines.length === maxLines) {
+      while (c.measureText(lines[maxLines - 1] + '…').width > maxWidth && lines[maxLines - 1].includes(' ')) lines[maxLines - 1] = lines[maxLines - 1].replace(/\s+\S+$/, '');
+      if (!String(text).endsWith(lines[maxLines - 1])) lines[maxLines - 1] += '…';
+    }
+    return lines;
+  }
+
+  function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines) {
+    let cursorX = x, cursorY = y, lines = 1;
+    for (const segment of segments) {
+      const words = String(segment.text || '').split(/(\s+)/).filter(Boolean);
+      for (const word of words) {
+        c.font = `${segment.style || 'normal'} ${segment.weight || 400} ${segment.size || 18}px Arial`;
+        const width = c.measureText(word).width;
+        if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
+          lines += 1;
+          if (lines > maxLines) return cursorY;
+          cursorX = x; cursorY += lineHeight;
+        }
+        if (cursorX === x && /^\s+$/.test(word)) continue;
+        c.fillText(word, cursorX, cursorY);
+        cursorX += width;
+      }
+    }
+    return cursorY;
+  }
+
+  function drawCard(target, card, scale = 1, guides = false) {
+    const c = target; const t = themeMap[card.theme] || themeMap.titanium;
+    c.save(); c.scale(scale, scale); c.clearRect(0, 0, W, H);
+    const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#00101e'); bg.addColorStop(.5, '#020609'); bg.addColorStop(1, '#001523'); c.fillStyle = bg; c.fillRect(0, 0, W, H);
+
+    const trim = { x: 30, y: 30, w: 600, h: 840 };
+    const mx = value => trim.x + value * trim.w / 1056;
+    const my = value => trim.y + value * trim.h / 1490;
+    const mw = value => value * trim.w / 1056;
+    const mh = value => value * trim.h / 1490;
+    const crop = (img, sx, sy, sw, sh) => img && c.drawImage(img, sx, sy, sw, sh, mx(sx), my(sy), mw(sw), mh(sh));
+
+    if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
+    else if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
+
+    crop(layerImages.frame, 60, 60, 936, 95);
+    crop(layerImages.frame, 175, 155, 815, 126);
+    crop(layerImages.frame, 60, 155, 116, 126);
+    crop(layerImages.frame, 67, 1034, 925, 393);
+
+    const art = { x: mx(78), y: my(284), w: mw(900), h: mh(726) };
+    c.save(); c.beginPath(); c.rect(art.x, art.y, art.w, art.h); c.clip();
+    if (artImage) {
+      const cover = Math.max(art.w / artImage.width, art.h / artImage.height) * (card.artScale / 100);
+      const dw = artImage.width * cover, dh = artImage.height * cover;
+      c.drawImage(artImage, art.x + (art.w - dw) / 2 + card.artX * 1.8, art.y + (art.h - dh) / 2 + card.artY * 1.5, dw, dh);
+    } else {
+      const g = c.createLinearGradient(art.x, art.y, art.x + art.w, art.y + art.h); g.addColorStop(0, t.mid); g.addColorStop(.6, '#101820'); g.addColorStop(1, t.dark); c.fillStyle = g; c.fillRect(art.x, art.y, art.w, art.h);
+      c.strokeStyle = t.edge + '88'; c.lineWidth = 2;
+      for (let x = -100; x < 800; x += 44) { c.beginPath(); c.moveTo(x, art.y); c.lineTo(x + 270, art.y + art.h); c.stroke(); }
+      c.fillStyle = '#dcecf3a8'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '900 18px Arial'; c.fillText('UPLOAD UNIT ARTWORK', W / 2, 382); c.font = '500 11px Arial'; c.fillText('ART TAB  •  PNG / JPEG / WEBP', W / 2, 407);
+    }
+    c.restore();
+
+    c.textBaseline = 'middle'; c.textAlign = 'center';
+    if (layerImages.construction) c.drawImage(layerImages.construction, 69, 67, 49, 49);
+    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    c.fillStyle = '#050505'; c.font = '900 31px Arial'; c.fillText(card.construction, 94, 93);
+    if (layerImages.operation) c.drawImage(layerImages.operation, 120, 70, 42, 42);
+    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(141, 91, 20, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#fff'; c.font = '900 27px Arial'; c.fillText(card.operation, 141, 92);
+
+    const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
+    const titleSize = fitText(c, title, 350, 40 * card.titleSize / 100, 22, 900);
+    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px Arial Narrow, Arial`; c.fillText(title, 347, 92);
+    if (card.cycle !== '') {
+      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 542, 64, 53, 53);
+      else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(569, 91, 23, 0, Math.PI * 2); c.fill(); c.stroke(); }
+      c.fillStyle = '#050505'; c.font = '900 28px Arial'; c.fillText(card.cycle, 569, 92);
+    }
+
+    c.fillStyle = '#f4f4f4'; c.font = '500 18px Arial Narrow, Arial'; c.fillText(card.loadout, 361, 138);
+    c.strokeStyle = '#e4e4e4'; c.lineWidth = 1; c.beginPath(); c.moveTo(143, 153); c.lineTo(583, 153); c.stroke();
+    c.font = '500 17px Arial Narrow, Arial'; c.fillText(`${card.rarity} • ${card.traits}`, 360, 170);
+
+    const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
+    assets.forEach(([key, color], i) => {
+      const y = 119 + i * 36;
+      if (layerImages.assetPill) c.drawImage(layerImages.assetPill, 65, y, 62, 31);
+      else { c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3; roundedRect(c, 65, y, 62, 31, 15).fill(); roundedRect(c, 65, y, 62, 31, 15).stroke(); }
+      c.fillStyle = color; roundedRect(c, 98, y + 2, 27, 27, 10).fill();
+      c.fillStyle = '#050505'; c.font = '900 22px Arial'; c.fillText(card[`asset${key}`], 82, y + 16);
+      c.fillStyle = '#fff'; c.fillText(key, 111, y + 16);
+    });
+
+    const rarityCount = { Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] || 4;
+    c.fillStyle = '#050708'; c.beginPath(); c.moveTo(478, 586); c.lineTo(581, 586); c.lineTo(575, 608); c.lineTo(467, 608); c.closePath(); c.fill();
+    for (let i = 0; i < rarityCount; i++) {
+      const x = 571 - (rarityCount - i) * 22;
+      if (layerImages.bolt) c.drawImage(layerImages.bolt, x, 589, 18, 18);
+      else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(x + 9, 598, 7, 0, Math.PI * 2); c.fill(); }
+    }
+
+    c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    if (layerImages.activation) c.drawImage(layerImages.activation, 61, 650, 19, 19);
+    else { c.strokeStyle = '#050505'; c.lineWidth = 2.5; c.beginPath(); c.arc(71, 660, 7, .4, 5.5); c.stroke(); }
+    const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
+    const ruleSegments = ruleParts.length > 1
+      ? [{ text: `: ${ruleParts[0]} `, weight: 800, size: 18.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 18.5 }]
+      : [{ text: `: ${card.rules}`, weight: 700, size: 18.5 }];
+    let y = drawStyledSegments(c, ruleSegments, 84, 668, 493, 22, 4) + 13;
+    if (card.flavor) { c.font = 'italic 17.5px Arial'; wrapLines(c, card.flavor, 500, 3).forEach(line => { c.fillText(line, 61, y); y += 21; }); }
+
+    if (layerImages.speedPill) c.drawImage(layerImages.speedPill, 68, 780, 69, 55);
+    else { c.fillStyle = '#ffe990'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.ellipse(103, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    if (layerImages.attackPill) c.drawImage(layerImages.attackPill, 133, 780, 69, 55);
+    else { c.fillStyle = '#d20710'; c.beginPath(); c.ellipse(168, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    if (layerImages.defensePill) c.drawImage(layerImages.defensePill, 458, 780, 137, 55);
+    else { c.fillStyle = '#252525'; roundedRect(c, 458, 783, 137, 49, 24).fill(); c.fillStyle = '#d7d7d7'; c.beginPath(); c.arc(493, 808, 25, 0, Math.PI * 2); c.fill(); }
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = '900 35px Arial'; c.fillText(card.speed, 103, 808);
+    c.fillStyle = '#fff'; c.font = '900 37px Arial'; c.fillText(card.attack, 168, 808); c.fillStyle = '#050505'; c.fillText(card.armor, 493, 808); c.fillStyle = '#fff'; c.fillText(card.structure, 560, 808);
+    c.fillStyle = '#050505'; c.font = '600 12px Arial'; c.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 811); c.font = '500 10px Arial'; c.fillText(card.copyright || `${card.setCode} • ${card.collector}`, 330, 828);
+
+    if (guides) {
+      c.save(); c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]); c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43); c.restore();
+    }
+    c.restore();
+  }
+
+  function render() { drawCard(ctx, getFormData(), 1, document.querySelector('#showBleed').checked); }
+
+  function renderLibrary() {
+    const query = document.querySelector('#searchCards').value.toLowerCase();
+    const faction = document.querySelector('#filterFaction').value;
+    const factions = [...new Set(cards.map(c => c.faction).filter(Boolean))].sort();
+    const filter = document.querySelector('#filterFaction');
+    const old = filter.value; filter.innerHTML = '<option value="">All factions</option>' + factions.map(x => `<option>${escXml(x)}</option>`).join(''); filter.value = old;
+    const shown = cards.filter(c => (!query || `${c.name} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
+    cardList.innerHTML = shown.length ? shown.map(c => `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0"><input type="checkbox" aria-label="Select ${escXml(c.name)}" ${selected.has(c.id) ? 'checked' : ''}><div class="mini-card"></div><div class="library-meta"><strong>${escXml(c.name)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`).join('') : '<p class="hint">No cards match this view.</p>';
+    document.querySelector('#selectionCount').textContent = `${selected.size} selected`;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  async function renderCardBlob(card, format, dpi) {
+    const factor = dpi / PPI; const out = document.createElement('canvas'); out.width = W * factor; out.height = H * factor;
+    const outCtx = out.getContext('2d');
+    let image = artImage;
+    if (card.artData && card.id !== currentId) image = await new Promise(resolve => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => resolve(null); i.src = card.artData; });
+    const previous = artImage; artImage = image; drawCard(outCtx, card, factor, false); artImage = previous;
+    if (format === 'svg') {
+      const png = out.toDataURL('image/png');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2.75in" height="3.75in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(card.name)}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
+      return new Blob([svg], { type: 'image/svg+xml' });
+    }
+    return await new Promise(resolve => out.toBlob(resolve, format === 'jpeg' ? 'image/jpeg' : 'image/png', .95));
+  }
+
+  async function exportCard(card = getFormData(), format = document.querySelector('#exportFormat').value, dpi = Number(document.querySelector('#exportDpi').value)) {
+    const blob = await renderCardBlob(card, format, dpi); const ext = format === 'jpeg' ? 'jpg' : format;
+    downloadBlob(blob, `${slug(card.name)}-${dpi}dpi.${ext}`); toast(`${card.name} exported at ${dpi} DPI`);
+  }
+
+  function exportProject() {
+    saveCurrent(false);
+    const project = { app: 'MechTitan Card Forge', version: 1, exportedAt: new Date().toISOString(), print: { trimInches: [2.5,3.5], bleedInches: .125 }, cards };
+    downloadBlob(new Blob([JSON.stringify(project, null, 2)], {type:'application/json'}), `${slug(cards[0]?.setCode || 'mechtitan')}-card-set.json`);
+    toast(`Exported ${cards.length} card${cards.length === 1 ? '' : 's'}`);
+  }
+
+  function importProjectFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result); const incoming = Array.isArray(data) ? data : data.cards;
+        if (!Array.isArray(incoming) || !incoming.length) throw new Error('No cards found');
+        cards = incoming.map(c => normalizeCard({ ...c, id: c.id || uid() })); currentId = cards[0].id; selected.clear(); persist(); setFormData(cards[0]); toast(`Loaded ${cards.length} cards`);
+      } catch (error) { toast(`Could not load project: ${error.message}`); }
+    }; reader.readAsText(file);
+  }
+
+  function parseDelimited(text, delimiter) {
+    const rows = []; let row = [], cell = '', quote = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i], next = text[i+1];
+      if (ch === '"' && quote && next === '"') { cell += '"'; i++; }
+      else if (ch === '"') quote = !quote;
+      else if (ch === delimiter && !quote) { row.push(cell); cell = ''; }
+      else if ((ch === '\n' || ch === '\r') && !quote) { if (ch === '\r' && next === '\n') i++; row.push(cell); if (row.some(x => x.trim())) rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    row.push(cell); if (row.some(x => x.trim())) rows.push(row);
+    const headers = rows.shift().map(h => h.trim()); return rows.map(r => Object.fromEntries(headers.map((h,i) => [h, r[i] ?? ''])));
+  }
+
+  function mapImportRow(row) {
+    const aliases = { cardname:'name', title:'name', constructioncost:'construction', operationcost:'operation', logistics:'assetL', politics:'assetP', strategics:'assetS', tactics:'assetT', support:'assetU', cardtext:'rules', ruletext:'rules', flavortext:'flavor', cyclevalue:'cycle', speedvalue:'speed', set:'setCode', number:'collector' };
+    const mapped = {};
+    Object.entries(row).forEach(([key,value]) => { const compact = key.replace(/[^a-z0-9]/gi,'').toLowerCase(); const target = aliases[compact] || Object.keys(defaults).find(k => k.toLowerCase() === compact); if (target) mapped[target] = value; });
+    return normalizeCard({ ...mapped, id: uid() });
+  }
+
+  async function bulkImport(file) {
+    try {
+      let rows;
+      if (/\.json$/i.test(file.name)) { const json = JSON.parse(await file.text()); rows = Array.isArray(json) ? json : json.cards; }
+      else if (/\.xlsx?$/i.test(file.name)) {
+        if (!window.XLSX) throw new Error('Spreadsheet reader is still loading. Try again in a moment.');
+        const book = XLSX.read(await file.arrayBuffer()); rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+      } else { const text = await file.text(); rows = parseDelimited(text, /\.tsv$/i.test(file.name) ? '\t' : ','); }
+      if (!Array.isArray(rows) || !rows.length) throw new Error('No data rows found');
+      const imported = rows.map(mapImportRow); cards.push(...imported); currentId = imported[0].id; persist(); setFormData(imported[0]); toast(`Imported ${imported.length} cards`);
+    } catch (error) { toast(`Import failed: ${error.message}`); }
+  }
+
+  form.addEventListener('input', () => {
+    updateOutputs(); render(); saveStatus.textContent = 'Unsaved changes';
+    clearTimeout(historyTimer); historyTimer = setTimeout(pushHistory, 350);
+  });
+  document.querySelector('#showBleed').addEventListener('change', render);
+  document.querySelector('#zoom').addEventListener('input', updateOutputs);
+  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('active', x === tab); x.setAttribute('aria-selected', x === tab); });
+    document.querySelectorAll('.tab-page').forEach(x => x.classList.toggle('active', x.dataset.page === tab.dataset.tab));
+  }));
+  document.querySelector('#chooseArtBtn').addEventListener('click', () => document.querySelector('#artFile').click());
+  document.querySelector('#artFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (file.size > 12 * 1024 * 1024) return toast('Artwork must be under 12 MB');
+    const reader = new FileReader(); reader.onload = () => { form.dataset.artData = reader.result; loadArt(reader.result); saveStatus.textContent = 'Unsaved changes'; pushHistory(); }; reader.readAsDataURL(file);
+  });
+  document.querySelector('#clearArtBtn').addEventListener('click', () => { form.dataset.artData = ''; artImage = null; render(); pushHistory(); });
+  document.querySelector('#saveBtn').addEventListener('click', () => saveCurrent());
+  document.querySelector('#exportImageBtn').addEventListener('click', () => exportCard());
+  document.querySelector('#exportProjectBtn').addEventListener('click', exportProject);
+  document.querySelector('#importProjectBtn').addEventListener('click', () => document.querySelector('#projectFile').click());
+  document.querySelector('#projectFile').addEventListener('change', e => e.target.files[0] && importProjectFile(e.target.files[0]));
+  document.querySelector('#bulkImportBtn').addEventListener('click', () => document.querySelector('#bulkFile').click());
+  document.querySelector('#bulkFile').addEventListener('change', e => e.target.files[0] && bulkImport(e.target.files[0]));
+  document.querySelector('#newCardBtn').addEventListener('click', () => { currentId = uid(); history = []; historyIndex = -1; setFormData({ ...defaults, id: currentId }); });
+  document.querySelector('#duplicateBtn').addEventListener('click', () => { const source = cards.find(c => c.id === currentId) || getFormData(); const copy = normalizeCard({ ...source, id: uid(), name: `${source.name} COPY` }); cards.unshift(copy); persist(); setFormData(copy); toast('Card duplicated'); });
+  document.querySelector('#deleteBtn').addEventListener('click', () => {
+    const ids = selected.size ? [...selected] : [currentId]; cards = cards.filter(c => !ids.includes(c.id)); selected.clear();
+    if (!cards.length) cards.push(normalizeCard({ ...defaults, id: uid() })); currentId = cards[0].id; persist(); setFormData(cards[0]); toast(`Deleted ${ids.length} card${ids.length === 1 ? '' : 's'}`);
+  });
+  document.querySelector('#undoBtn').addEventListener('click', () => travelHistory(-1));
+  document.querySelector('#redoBtn').addEventListener('click', () => travelHistory(1));
+  document.querySelector('#searchCards').addEventListener('input', renderLibrary);
+  document.querySelector('#filterFaction').addEventListener('change', renderLibrary);
+  cardList.addEventListener('click', event => {
+    const item = event.target.closest('.library-card'); if (!item) return; const id = item.dataset.id;
+    if (event.target.matches('input[type=checkbox]')) { event.target.checked ? selected.add(id) : selected.delete(id); renderLibrary(); return; }
+    const card = cards.find(c => c.id === id); if (card) setFormData(card);
+  });
+  cardList.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.library-card')) { event.preventDefault(); const card = cards.find(c => c.id === event.target.dataset.id); if (card) setFormData(card); } });
+  document.querySelector('#exportGroupBtn').addEventListener('click', async () => {
+    const ids = selected.size ? [...selected] : [currentId]; const group = cards.filter(c => ids.includes(c.id)); if (!group.length) return toast('Select at least one saved card');
+    const format = document.querySelector('#exportFormat').value, dpi = Number(document.querySelector('#exportDpi').value);
+    for (let i = 0; i < group.length; i++) { await exportCard(group[i], format, dpi); await new Promise(r => setTimeout(r, 250)); }
+  });
+  window.addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveCurrent(); }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); travelHistory(event.shiftKey ? 1 : -1); }
+  });
+
+  function registerWebMcp() {
+    const context = document.modelContext;
+    if (!context?.registerTool) return;
+    const tools = [
+      {
+        name: 'read_current_card', title: 'Read current card', description: 'Read the fields of the card currently open in MechTitan Card Forge.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, untrustedContentHint: false }, execute: () => getFormData()
+      },
+      {
+        name: 'stage_card_fields', title: 'Stage card fields', description: 'Update visible fields on the currently open card without saving it to the set library.',
+        inputSchema: { type: 'object', properties: { fields: { type: 'object', additionalProperties: true } }, required: ['fields'], additionalProperties: false }, annotations: { readOnlyHint: false, untrustedContentHint: true },
+        execute: input => { if (!input?.fields || typeof input.fields !== 'object') throw new Error('fields must be an object'); setFormData({ ...getFormData(), ...input.fields, id: currentId }); saveStatus.textContent = 'Unsaved changes'; return { status: 'staged', id: currentId, name: getFormData().name }; }
+      },
+      {
+        name: 'save_current_card', title: 'Save current card', description: 'Save the current visible card to the local set library.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: false, untrustedContentHint: false }, execute: () => { const card = saveCurrent(false); return { status: 'saved', id: card.id, name: card.name, totalCards: cards.length }; }
+      }
+    ];
+    tools.forEach(tool => { try { Promise.resolve(context.registerTool(tool)).catch(() => {}); } catch (_) {} });
+  }
+
+  preloadLayers();
+  const initial = loadStore(); setFormData(initial); updateUndoButtons(); registerWebMcp();
+})();
