@@ -271,7 +271,7 @@
     const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
     c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; c.fillText(title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 547, 69, 50, 47);
+      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 545, 65, 54, 54);
       else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(572, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
       c.fillStyle = '#050505'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.cycle, 572, 93);
     }
