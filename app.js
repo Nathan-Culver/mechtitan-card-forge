@@ -370,16 +370,17 @@
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
-    // Draw each paired stat as one pod first, then inset its two values. This keeps
-    // the light ovals fully seated inside the shared charcoal container at every DPI.
-    c.fillStyle = '#252525'; c.strokeStyle = '#050505'; c.lineWidth = 3;
-    roundedRect(c, 65, 781, 139, 54, 27).fill(); roundedRect(c, 65, 781, 139, 54, 27).stroke();
+    // The engraved charcoal pods are already part of the calibrated metal frame.
+    // Draw only the inset gauges here so the pod remains one integrated component
+    // instead of stacking a second dark capsule over the frame artwork.
     drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
-    c.fillStyle = '#d20710'; c.strokeStyle = '#050505'; c.lineWidth = 3;
+    const attackFill = c.createRadialGradient(158, 800, 3, 168, 808, 35);
+    attackFill.addColorStop(0, '#ef1b27'); attackFill.addColorStop(1, '#be030b');
+    c.fillStyle = attackFill; c.strokeStyle = '#050505'; c.lineWidth = 3;
     c.beginPath(); c.ellipse(168, 808, 32.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.fillStyle = '#252525'; c.strokeStyle = '#050505';
-    roundedRect(c, 465, 781, 129, 54, 27).fill(); roundedRect(c, 465, 781, 129, 54, 27).stroke();
-    c.fillStyle = '#d7d7d7'; c.lineWidth = 3;
+    const armorFill = c.createRadialGradient(490, 800, 2, 498, 808, 27);
+    armorFill.addColorStop(0, '#f2f2f1'); armorFill.addColorStop(1, '#bfc2c4');
+    c.fillStyle = armorFill; c.strokeStyle = '#050505'; c.lineWidth = 3;
     c.beginPath(); c.ellipse(498, 808, 24.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
     c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
