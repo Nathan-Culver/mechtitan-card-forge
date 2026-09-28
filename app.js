@@ -323,7 +323,10 @@
       const railBottom = 151 + assets.length * 63;
       c.fillStyle = '#f4f3ef'; c.strokeStyle = '#050505'; c.lineWidth = 4;
       c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(175), my(155)); c.lineTo(mx(175), my(railBottom));
-      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.closePath(); c.fill(); c.stroke();
+      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.closePath(); c.fill();
+      // Keep the rail open at the top so no horizontal rule sits above the first cost pill.
+      c.beginPath(); c.moveTo(mx(175), my(155)); c.lineTo(mx(175), my(railBottom));
+      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.lineTo(mx(60), my(155)); c.stroke();
     }
     c.fillStyle = '#020202'; c.strokeStyle = '#050505'; c.lineWidth = 4;
     c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
