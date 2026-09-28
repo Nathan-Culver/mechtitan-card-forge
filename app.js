@@ -133,7 +133,9 @@
       loadout: '80 tons • Med Laser • 4 SRMs • 2 Arrow IVs', traits: 'Mech • Artillery • Omni • Clan • Wolf',
       rules: 'Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.',
       flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
-      speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Uncommon', faction: 'Clan Wolf', collector: '001/180'
+      speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Common', faction: 'Clan Wolf',
+      artist: 'Randy Asplund-Faith', copyright: '©1997 Wizards of the Coast, Inc.', collector: '001/180',
+      artData: 'assets/naga-d-sample-art.png'
     });
     cards = [prototype]; currentId = prototype.id; persist(); return prototype;
   }
@@ -208,7 +210,7 @@
     for (const segment of segments) {
       const words = String(segment.text || '').split(/(\s+)/).filter(Boolean);
       for (const word of words) {
-        c.font = `${segment.style || 'normal'} ${segment.weight || 400} ${segment.size || 18}px Arial`;
+        c.font = `${segment.style || 'normal'} ${segment.weight || 400} ${segment.size || 18}px Arial, sans-serif`;
         const width = c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
@@ -258,25 +260,28 @@
     c.restore();
 
     c.textBaseline = 'middle'; c.textAlign = 'center';
-    if (layerImages.construction) c.drawImage(layerImages.construction, 69, 67, 49, 49);
-    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    c.fillStyle = '#050505'; c.font = '900 31px Arial'; c.fillText(card.construction, 94, 93);
-    if (layerImages.operation) c.drawImage(layerImages.operation, 120, 70, 42, 42);
-    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(141, 91, 20, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = '#fff'; c.font = '900 27px Arial'; c.fillText(card.operation, 141, 92);
+    if (layerImages.construction) c.drawImage(layerImages.construction, 72, 70, 46, 46);
+    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(95, 93, 21, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    c.fillStyle = '#050505'; c.font = '900 33px "Arial Black", Arial'; c.fillText(card.construction, 95, 93);
+    if (layerImages.operation) c.drawImage(layerImages.operation, 121, 74, 38, 38);
+    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(140, 93, 19, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#fff'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.operation, 140, 93);
 
     const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
-    const titleSize = fitText(c, title, 350, 40 * card.titleSize / 100, 22, 900);
-    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px Arial Narrow, Arial`; c.fillText(title, 347, 92);
+    const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
+    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; c.fillText(title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 542, 64, 53, 53);
-      else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(569, 91, 23, 0, Math.PI * 2); c.fill(); c.stroke(); }
-      c.fillStyle = '#050505'; c.font = '900 28px Arial'; c.fillText(card.cycle, 569, 92);
+      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 547, 69, 50, 47);
+      else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(572, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
+      c.fillStyle = '#050505'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.cycle, 572, 93);
     }
 
-    c.fillStyle = '#f4f4f4'; c.font = '500 18px Arial Narrow, Arial'; c.fillText(card.loadout, 361, 138);
+    const loadoutSize = fitText(c, card.loadout, 438, 23, 16, 500);
+    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; c.fillText(card.loadout, 361, 140);
     c.strokeStyle = '#e4e4e4'; c.lineWidth = 1; c.beginPath(); c.moveTo(143, 153); c.lineTo(583, 153); c.stroke();
-    c.font = '500 17px Arial Narrow, Arial'; c.fillText(`${card.rarity} • ${card.traits}`, 360, 170);
+    const traitLine = `${card.rarity} • ${card.traits}`;
+    const traitSize = fitText(c, traitLine, 426, 23, 15, 500);
+    c.font = `500 ${traitSize}px Arial`; c.fillText(traitLine, 360, 172);
 
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
     assets.forEach(([key, color], i) => {
@@ -284,7 +289,7 @@
       if (layerImages.assetPill) c.drawImage(layerImages.assetPill, 65, y, 62, 31);
       else { c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3; roundedRect(c, 65, y, 62, 31, 15).fill(); roundedRect(c, 65, y, 62, 31, 15).stroke(); }
       c.fillStyle = color; roundedRect(c, 98, y + 2, 27, 27, 10).fill();
-      c.fillStyle = '#050505'; c.font = '900 22px Arial'; c.fillText(card[`asset${key}`], 82, y + 16);
+      c.fillStyle = '#050505'; c.font = '900 28px "Arial Black", Arial'; c.fillText(card[`asset${key}`], 82, y + 16);
       c.fillStyle = '#fff'; c.fillText(key, 111, y + 16);
     });
 
@@ -292,29 +297,29 @@
     c.fillStyle = '#050708'; c.beginPath(); c.moveTo(478, 586); c.lineTo(581, 586); c.lineTo(575, 608); c.lineTo(467, 608); c.closePath(); c.fill();
     for (let i = 0; i < rarityCount; i++) {
       const x = 571 - (rarityCount - i) * 22;
-      if (layerImages.bolt) c.drawImage(layerImages.bolt, x, 589, 18, 18);
+      if (layerImages.bolt) c.drawImage(layerImages.bolt, x + 1, 590, 16, 16);
       else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(x + 9, 598, 7, 0, Math.PI * 2); c.fill(); }
     }
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    if (layerImages.activation) c.drawImage(layerImages.activation, 61, 650, 19, 19);
-    else { c.strokeStyle = '#050505'; c.lineWidth = 2.5; c.beginPath(); c.arc(71, 660, 7, .4, 5.5); c.stroke(); }
+    if (layerImages.activation) c.drawImage(layerImages.activation, 84, 650, 19, 19);
+    else { c.strokeStyle = '#050505'; c.lineWidth = 2.5; c.beginPath(); c.arc(94, 660, 7, .4, 5.5); c.stroke(); }
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
     const ruleSegments = ruleParts.length > 1
-      ? [{ text: `: ${ruleParts[0]} `, weight: 800, size: 18.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 18.5 }]
-      : [{ text: `: ${card.rules}`, weight: 700, size: 18.5 }];
-    let y = drawStyledSegments(c, ruleSegments, 84, 668, 493, 22, 4) + 13;
-    if (card.flavor) { c.font = 'italic 17.5px Arial'; wrapLines(c, card.flavor, 500, 3).forEach(line => { c.fillText(line, 61, y); y += 21; }); }
+      ? [{ text: `: ${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
+      : [{ text: `: ${card.rules}`, weight: 700, size: 20.5 }];
+    let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
+    if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
     if (layerImages.speedPill) c.drawImage(layerImages.speedPill, 68, 780, 69, 55);
     else { c.fillStyle = '#ffe990'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.ellipse(103, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
     if (layerImages.attackPill) c.drawImage(layerImages.attackPill, 133, 780, 69, 55);
     else { c.fillStyle = '#d20710'; c.beginPath(); c.ellipse(168, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    if (layerImages.defensePill) c.drawImage(layerImages.defensePill, 458, 780, 137, 55);
-    else { c.fillStyle = '#252525'; roundedRect(c, 458, 783, 137, 49, 24).fill(); c.fillStyle = '#d7d7d7'; c.beginPath(); c.arc(493, 808, 25, 0, Math.PI * 2); c.fill(); }
-    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = '900 35px Arial'; c.fillText(card.speed, 103, 808);
-    c.fillStyle = '#fff'; c.font = '900 37px Arial'; c.fillText(card.attack, 168, 808); c.fillStyle = '#050505'; c.fillText(card.armor, 493, 808); c.fillStyle = '#fff'; c.fillText(card.structure, 560, 808);
-    c.fillStyle = '#050505'; c.font = '600 12px Arial'; c.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 811); c.font = '500 10px Arial'; c.fillText(card.copyright || `${card.setCode} • ${card.collector}`, 330, 828);
+    if (layerImages.defensePill) c.drawImage(layerImages.defensePill, 466, 780, 126, 55);
+    else { c.fillStyle = '#252525'; roundedRect(c, 466, 783, 126, 49, 24).fill(); c.fillStyle = '#d7d7d7'; c.beginPath(); c.arc(498, 808, 25, 0, Math.PI * 2); c.fill(); }
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = '900 35px "Arial Black", Arial'; c.fillText(card.speed, 103, 808);
+    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; c.fillText(card.attack, 168, 808); c.fillStyle = '#050505'; c.fillText(card.armor, 498, 808); c.fillStyle = '#fff'; c.fillText(card.structure, 559, 808);
+    c.fillStyle = '#050505'; c.font = '600 16px "Arial Narrow", Arial'; c.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 813); c.font = '500 11.5px Arial'; c.fillText(card.copyright || `${card.setCode} • ${card.collector}`, 330, 829);
 
     if (guides) {
       c.save(); c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]); c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43); c.restore();
