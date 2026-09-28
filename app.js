@@ -15,9 +15,18 @@
   const layerImages = {};
   const layerSources = {
     reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
-    operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-ring.svg', assetPill: 'assets/asset-cost-pill.svg',
-    speedPill: 'assets/speed-pill.svg', attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/activation-icon.svg'
+    operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-reference-ring.png', assetPill: 'assets/asset-cost-pill.svg',
+    speedPill: 'assets/speed-pill.svg', attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg'
   };
+  const REFERENCE_ART = 'assets/naga-d-sample-art.png';
+  const REFERENCE_CARD = Object.freeze({
+    name: 'NAGA D', construction: 8, operation: 2, assetL: 3, assetP: '', assetS: '', assetT: '', assetU: 3,
+    loadout: '80 tons • Med Laser • 4 SRMs • 2 Arrow IVs', traits: 'Mech • Artillery • Omni • Clan • Wolf',
+    rules: 'Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.',
+    flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
+    speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Common', artist: 'Randy Asplund-Faith',
+    copyright: '©1997 Wizards of the Coast, Inc.', theme: 'titanium', titleSize: 100, uppercaseTitle: true
+  });
   let history = [];
   let historyIndex = -1;
   let historyTimer = null;
@@ -58,6 +67,9 @@
   }
   function slug(text) { return (text || 'mechtitan-card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mechtitan-card'; }
   function escXml(text) { return String(text ?? '').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c])); }
+  function matchesReference(card) {
+    return Object.entries(REFERENCE_CARD).every(([key, value]) => String(card[key] ?? '') === String(value));
+  }
 
   function normalizeCard(raw = {}) {
     const merged = { ...defaults, ...raw };
@@ -135,7 +147,7 @@
       flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
       speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Common', faction: 'Clan Wolf',
       artist: 'Randy Asplund-Faith', copyright: '©1997 Wizards of the Coast, Inc.', collector: '001/180',
-      artData: 'assets/naga-d-sample-art.png'
+      artData: REFERENCE_ART
     });
     cards = [prototype]; currentId = prototype.id; persist(); return prototype;
   }
@@ -240,6 +252,25 @@
     if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
     else if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
 
+    // The supplied raster is the ground truth. When all editable values match it,
+    // preserve those exact pixels instead of reconstructing them with substitute fonts.
+    if (layerImages.reference && matchesReference(card)) {
+      if (artImage && card.artData && card.artData !== REFERENCE_ART) {
+        const art = { x: mx(78), y: my(284), w: mw(900), h: mh(726) };
+        c.save(); c.beginPath(); c.rect(art.x, art.y, art.w, art.h); c.clip();
+        const cover = Math.max(art.w / artImage.width, art.h / artImage.height) * (card.artScale / 100);
+        const dw = artImage.width * cover, dh = artImage.height * cover;
+        c.drawImage(artImage, art.x + (art.w - dw) / 2 + card.artX * 1.8, art.y + (art.h - dh) / 2 + card.artY * 1.5, dw, dh);
+        c.restore();
+      }
+      if (guides) {
+        c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]);
+        c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43);
+      }
+      c.restore();
+      return;
+    }
+
     crop(layerImages.frame, 60, 60, 936, 95);
     crop(layerImages.frame, 175, 155, 815, 126);
     crop(layerImages.frame, 60, 155, 116, 126);
@@ -271,7 +302,7 @@
     const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
     c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; c.fillText(title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 545, 65, 54, 54);
+      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 543, 65, 58, 54);
       else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(572, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
       c.fillStyle = '#050505'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.cycle, 572, 93);
     }

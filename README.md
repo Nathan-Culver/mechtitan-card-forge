@@ -4,8 +4,8 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 
 ## Features
 
-- Live unit-card preview inspired by the supplied prototype
-- Layered, reference-matched unit frame with separate cost, cycle, stat, activation, and rarity-bolt assets
+- Pixel-exact reference mode for the supplied NAGA D prototype, with uploaded artwork replaceable inside the original art window
+- Layered unit-card renderer with separate frame, construction, operation, asset-cost, Cycle, Tap, speed, attack, defense, and rarity-bolt assets
 - Bolt-head rarity rail: Unique (1), Rare (2), Uncommon (3), Common (4)
 - Exact 2.5 × 3.5 inch poker-card trim with 1/8 inch bleed on every edge
 - Rules for every specified cost and combat stat
@@ -23,6 +23,18 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 3. Select the `main` branch and `/ (root)` folder.
 
 The app is fully static. Spreadsheet `.xlsx` support loads SheetJS from jsDelivr; CSV, TSV, JSON, editing, and export continue to work without it.
+
+## Card component assets
+
+The editable renderer keeps each variable card component separate. The most important files are:
+
+- `assets/unit-frame-v2.png` — unit frame
+- `assets/construction-ring.svg` and `assets/operation-disc.svg` — top-left costs
+- `assets/asset-cost-pill.svg` — Logistics, Politics, Strategics, Tactics, and Support costs
+- `assets/cycle-reference-ring.png` and `assets/cycle-ring.svg` — Cycle symbol
+- `assets/tap-icon.svg` — Tap/activation symbol used in rules text
+- `assets/speed-pill.svg`, `assets/attack-pill.svg`, and `assets/defense-pill.svg` — bottom combat stats
+- `assets/rarity-bolt-v2.png` — silver bolt-head rarity dots
 
 ## Spreadsheet columns
 
