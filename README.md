@@ -4,8 +4,10 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 
 ## Features
 
-- Pixel-exact reference mode for the supplied NAGA D prototype, with uploaded artwork replaceable inside the original art window
-- Layered unit-card renderer with separate frame, construction, operation, asset-cost, Cycle, Tap, speed, attack, defense, and rarity-bolt assets
+- Reference-calibrated layered rendering that remains active while names, costs, text, and stats are edited
+- Separate frame, construction, operation, asset-cost, Cycle, Tap, speed, attack, defense, and rarity-bolt assets
+- Responsive 0–5 Asset Cost frame variants; unused header space is reclaimed by centered Tags and Types/Subtypes rows
+- Five Speed assets with a moving orange range and inverted black marker for XS, S, M, F, and XF
 - Bolt-head rarity rail: Unique (1), Rare (2), Uncommon (3), Common (4)
 - Exact 2.5 × 3.5 inch poker-card trim with 1/8 inch bleed on every edge
 - Rules for every specified cost and combat stat
@@ -28,12 +30,14 @@ The app is fully static. Spreadsheet `.xlsx` support loads SheetJS from jsDelivr
 
 The editable renderer keeps each variable card component separate. The most important files are:
 
-- `assets/unit-frame-v2.png` — unit frame
+- `assets/unit-frame-v2.png` — base unit frame
+- `assets/header-assets-0.svg` through `assets/header-assets-5.svg` — responsive Asset Cost/header frame variants
 - `assets/construction-ring.svg` and `assets/operation-disc.svg` — top-left costs
 - `assets/asset-cost-pill.svg` — Logistics, Politics, Strategics, Tactics, and Support costs
 - `assets/cycle-reference-ring.png` and `assets/cycle-ring.svg` — Cycle symbol
 - `assets/tap-icon.svg` — Tap/activation symbol used in rules text
-- `assets/speed-pill.svg`, `assets/attack-pill.svg`, and `assets/defense-pill.svg` — bottom combat stats
+- `assets/speed-xs.svg` through `assets/speed-xf.svg` — the five moving Speed indicators
+- `assets/attack-pill.svg` and `assets/defense-pill.svg` — bottom combat stats
 - `assets/rarity-bolt-v2.png` — silver bolt-head rarity dots
 
 ## Spreadsheet columns

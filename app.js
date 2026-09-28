@@ -16,17 +16,12 @@
   const layerSources = {
     reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
     operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-reference-ring.png', assetPill: 'assets/asset-cost-pill.svg',
-    speedPill: 'assets/speed-pill.svg', attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg'
+    speedXS: 'assets/speed-xs.svg', speedS: 'assets/speed-s.svg', speedM: 'assets/speed-m.svg', speedF: 'assets/speed-f.svg', speedXF: 'assets/speed-xf.svg',
+    header0: 'assets/header-assets-0.svg', header1: 'assets/header-assets-1.svg', header2: 'assets/header-assets-2.svg',
+    header3: 'assets/header-assets-3.svg', header4: 'assets/header-assets-4.svg', header5: 'assets/header-assets-5.svg',
+    attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg'
   };
   const REFERENCE_ART = 'assets/naga-d-sample-art.png';
-  const REFERENCE_CARD = Object.freeze({
-    name: 'NAGA D', construction: 8, operation: 2, assetL: 3, assetP: '', assetS: '', assetT: '', assetU: 3,
-    loadout: '80 tons • Med Laser • 4 SRMs • 2 Arrow IVs', traits: 'Mech • Artillery • Omni • Clan • Wolf',
-    rules: 'Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.',
-    flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
-    speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Common', artist: 'Randy Asplund-Faith',
-    copyright: '©1997 Wizards of the Coast, Inc.', theme: 'titanium', titleSize: 100, uppercaseTitle: true
-  });
   let history = [];
   let historyIndex = -1;
   let historyTimer = null;
@@ -67,10 +62,6 @@
   }
   function slug(text) { return (text || 'mechtitan-card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mechtitan-card'; }
   function escXml(text) { return String(text ?? '').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c])); }
-  function matchesReference(card) {
-    return Object.entries(REFERENCE_CARD).every(([key, value]) => String(card[key] ?? '') === String(value));
-  }
-
   function normalizeCard(raw = {}) {
     const merged = { ...defaults, ...raw };
     return {
@@ -247,34 +238,8 @@
     const my = value => trim.y + value * trim.h / 1490;
     const mw = value => value * trim.w / 1056;
     const mh = value => value * trim.h / 1490;
-    const crop = (img, sx, sy, sw, sh) => img && c.drawImage(img, sx, sy, sw, sh, mx(sx), my(sy), mw(sw), mh(sh));
-
-    if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
-    else if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
-
-    // The supplied raster is the ground truth. When all editable values match it,
-    // preserve those exact pixels instead of reconstructing them with substitute fonts.
-    if (layerImages.reference && matchesReference(card)) {
-      if (artImage && card.artData && card.artData !== REFERENCE_ART) {
-        const art = { x: mx(78), y: my(284), w: mw(900), h: mh(726) };
-        c.save(); c.beginPath(); c.rect(art.x, art.y, art.w, art.h); c.clip();
-        const cover = Math.max(art.w / artImage.width, art.h / artImage.height) * (card.artScale / 100);
-        const dw = artImage.width * cover, dh = artImage.height * cover;
-        c.drawImage(artImage, art.x + (art.w - dw) / 2 + card.artX * 1.8, art.y + (art.h - dh) / 2 + card.artY * 1.5, dw, dh);
-        c.restore();
-      }
-      if (guides) {
-        c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]);
-        c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43);
-      }
-      c.restore();
-      return;
-    }
-
-    crop(layerImages.frame, 60, 60, 936, 95);
-    crop(layerImages.frame, 175, 155, 815, 126);
-    crop(layerImages.frame, 60, 155, 116, 126);
-    crop(layerImages.frame, 67, 1034, 925, 393);
+    if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
+    else if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
 
     const art = { x: mx(78), y: my(284), w: mw(900), h: mh(726) };
     c.save(); c.beginPath(); c.rect(art.x, art.y, art.w, art.h); c.clip();
@@ -307,14 +272,40 @@
       c.fillStyle = '#050505'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.cycle, 572, 93);
     }
 
-    const loadoutSize = fitText(c, card.loadout, 438, 23, 16, 500);
-    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; c.fillText(card.loadout, 361, 140);
-    c.strokeStyle = '#e4e4e4'; c.lineWidth = 1; c.beginPath(); c.moveTo(143, 153); c.lineTo(583, 153); c.stroke();
-    const traitLine = `${card.rarity} • ${card.traits}`;
-    const traitSize = fitText(c, traitLine, 426, 23, 15, 500);
-    c.font = `500 ${traitSize}px Arial`; c.fillText(traitLine, 360, 172);
-
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
+    const header = layerImages[`header${assets.length}`];
+    if (header) c.drawImage(header, trim.x, trim.y, trim.w, trim.h);
+    const firstRowLeft = assets.length ? 175 : 60;
+    const secondRowLeft = assets.length > 1 ? 175 : 60;
+
+    // Keep the geometry deterministic even when a browser delays decoding an SVG layer.
+    // The matching SVG files remain exportable component assets; this canvas geometry is
+    // the authoritative fallback used by previews and high-resolution exports.
+    if (assets.length > 2) {
+      const droopBottom = 155 + assets.length * 63;
+      c.fillStyle = '#f4f3ef'; c.strokeStyle = '#050505'; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(175), my(155)); c.lineTo(mx(175), my(droopBottom));
+      c.lineTo(mx(151), my(droopBottom + 20)); c.lineTo(mx(60), my(droopBottom + 20)); c.closePath(); c.fill(); c.stroke();
+    }
+    c.fillStyle = '#020202'; c.strokeStyle = '#050505'; c.lineWidth = 4;
+    c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
+    c.strokeRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
+    c.fillRect(mx(secondRowLeft), my(219), mw(990 - secondRowLeft), mh(62));
+    c.strokeRect(mx(secondRowLeft), my(219), mw(990 - secondRowLeft), mh(62));
+    c.strokeStyle = '#eeeeec'; c.lineWidth = 1.5; c.beginPath();
+    c.moveTo(mx(secondRowLeft + 18), my(219)); c.lineTo(mx(974), my(219)); c.stroke();
+
+    const firstRowCenter = mx((firstRowLeft + 990) / 2);
+    const secondRowCenter = mx((secondRowLeft + 990) / 2);
+    const firstRowWidth = mw(990 - firstRowLeft - 24);
+    const secondRowWidth = mw(990 - secondRowLeft - 24);
+
+    const loadoutSize = fitText(c, card.loadout, firstRowWidth, 23, 16, 500);
+    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; c.fillText(card.loadout, firstRowCenter, my(188));
+    const traitLine = `${card.rarity} • ${card.traits}`;
+    const traitSize = fitText(c, traitLine, secondRowWidth, 23, 15, 500);
+    c.font = `500 ${traitSize}px Arial`; c.fillText(traitLine, secondRowCenter, my(250));
+
     assets.forEach(([key, color], i) => {
       const y = 119 + i * 36;
       if (layerImages.assetPill) c.drawImage(layerImages.assetPill, 65, y, 62, 31);
@@ -342,7 +333,8 @@
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
-    if (layerImages.speedPill) c.drawImage(layerImages.speedPill, 68, 780, 69, 55);
+    const speedAsset = layerImages[`speed${card.speed}`] || layerImages.speedM;
+    if (speedAsset) c.drawImage(speedAsset, 68, 780, 69, 55);
     else { c.fillStyle = '#ffe990'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.ellipse(103, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
     if (layerImages.attackPill) c.drawImage(layerImages.attackPill, 133, 780, 69, 55);
     else { c.fillStyle = '#d20710'; c.beginPath(); c.ellipse(168, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
