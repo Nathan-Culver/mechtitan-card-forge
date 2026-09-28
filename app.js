@@ -199,18 +199,18 @@
     c.restore();
   }
   function drawCycleControl(c, centerX, centerY) {
-    const r = 23;
-    c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'round';
-    c.lineWidth = 3.2; c.beginPath(); c.arc(centerX, centerY, r, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.lineWidth = 2.2;
-    [[0,-29,0,-20],[0,20,0,29],[-29,0,-20,0],[20,0,29,0]].forEach(([x1,y1,x2,y2]) => {
+    c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'square';
+    c.lineWidth = 3.2; c.beginPath(); c.arc(centerX, centerY, 20, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.lineWidth = 2.5;
+    [[0,-26,0,-20],[0,20,0,26],[-26,0,-20,0],[20,0,26,0]].forEach(([x1,y1,x2,y2]) => {
       c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
     });
-    c.lineWidth = 4.2;
-    c.beginPath(); c.arc(centerX, centerY, 18, -2.95, -0.55); c.stroke();
-    c.beginPath(); c.moveTo(centerX+17, centerY-16); c.lineTo(centerX+25, centerY-14); c.lineTo(centerX+20, centerY-7); c.closePath(); c.fillStyle = '#050505'; c.fill();
-    c.beginPath(); c.arc(centerX, centerY, 18, 0.2, 2.55); c.stroke();
-    c.beginPath(); c.moveTo(centerX-17, centerY+16); c.lineTo(centerX-25, centerY+14); c.lineTo(centerX-20, centerY+7); c.closePath(); c.fill();
+    c.lineCap = 'round'; c.lineWidth = 4.5;
+    c.beginPath(); c.arc(centerX, centerY, 16.5, -2.92, -0.48); c.stroke();
+    c.beginPath(); c.arc(centerX, centerY, 16.5, 0.22, 2.66); c.stroke();
+    c.fillStyle = '#050505';
+    c.beginPath(); c.moveTo(centerX + 14, centerY - 17); c.lineTo(centerX + 24, centerY - 15); c.lineTo(centerX + 18, centerY - 6); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX - 14, centerY + 17); c.lineTo(centerX - 24, centerY + 15); c.lineTo(centerX - 18, centerY + 6); c.closePath(); c.fill();
     c.restore();
   }
   function drawSpeedGauge(c, speed, x, y, w, h) {
@@ -226,12 +226,13 @@
     c.strokeStyle = '#050505'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke(); c.restore();
   }
   function drawTapIcon(c, centerX, centerY) {
-    c.save(); c.strokeStyle = '#050505'; c.fillStyle = '#050505'; c.lineCap = 'round'; c.lineWidth = 2.2;
-    c.beginPath(); c.arc(centerX, centerY, 7, -2.8, -0.35); c.stroke();
-    c.beginPath(); c.moveTo(centerX+5.7, centerY-5.3); c.lineTo(centerX+10, centerY-4.2); c.lineTo(centerX+7.2, centerY-1); c.closePath(); c.fill();
-    c.beginPath(); c.arc(centerX, centerY, 7, 0.35, 2.8); c.stroke();
-    c.beginPath(); c.moveTo(centerX-5.7, centerY+5.3); c.lineTo(centerX-10, centerY+4.2); c.lineTo(centerX-7.2, centerY+1); c.closePath(); c.fill();
-    c.beginPath(); c.arc(centerX, centerY, 2.2, 0, Math.PI * 2); c.fill(); c.restore();
+    c.save(); c.strokeStyle = '#050505'; c.fillStyle = '#050505'; c.lineCap = 'round';
+    c.lineWidth = 2.25; c.beginPath(); c.arc(centerX, centerY, 7.2, -2.96, -0.72); c.stroke();
+    c.beginPath(); c.arc(centerX, centerY, 7.2, 0.18, 2.42); c.stroke();
+    c.beginPath(); c.moveTo(centerX + 4.8, centerY - 7.7); c.lineTo(centerX + 10.1, centerY - 6); c.lineTo(centerX + 6.1, centerY - 1.9); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX - 4.8, centerY + 7.7); c.lineTo(centerX - 10.1, centerY + 6); c.lineTo(centerX - 6.1, centerY + 1.9); c.closePath(); c.fill();
+    c.lineWidth = 1.8; c.beginPath(); c.arc(centerX, centerY, 2.6, 0, Math.PI * 2); c.stroke();
+    c.restore();
   }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
     const words = String(text || '').split(/\s+/).filter(Boolean); const lines = []; let line = '';
@@ -296,19 +297,19 @@
     c.restore();
 
     c.textBaseline = 'middle'; c.textAlign = 'center';
-    if (layerImages.construction) c.drawImage(layerImages.construction, 72, 70, 46, 46);
-    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(95, 93, 21, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    c.fillStyle = '#050505'; c.font = '900 33px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 95, 93);
-    if (layerImages.operation) c.drawImage(layerImages.operation, 121, 74, 38, 38);
-    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(140, 93, 19, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = '#fff'; c.font = '900 29px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 140, 93);
+    if (layerImages.construction) c.drawImage(layerImages.construction, 72, 69, 44, 44);
+    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 91, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 94, 91);
+    if (layerImages.operation) c.drawImage(layerImages.operation, 121, 73, 37, 37);
+    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 91.5, 18.5, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 91.5);
 
     const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
     const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
     c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextOpticallyCentered(c, title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      drawCycleControl(c, 572, 93);
-      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 572, 93);
+      drawCycleControl(c, 572, 91.5);
+      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 572, 91.5);
     }
 
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
@@ -319,10 +320,10 @@
     // two-cost geometry can leak through at 0, 1, or 3–5 Asset Costs.
     c.fillStyle = '#020202'; c.fillRect(mx(60), my(155), mw(930), mh(126));
     if (assets.length) {
-      const railBottom = 155 + assets.length * 64;
+      const railBottom = 151 + assets.length * 63;
       c.fillStyle = '#f4f3ef'; c.strokeStyle = '#050505'; c.lineWidth = 4;
       c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(175), my(155)); c.lineTo(mx(175), my(railBottom));
-      c.lineTo(mx(151), my(railBottom + 20)); c.lineTo(mx(60), my(railBottom + 20)); c.closePath(); c.fill(); c.stroke();
+      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.closePath(); c.fill(); c.stroke();
     }
     c.fillStyle = '#020202'; c.strokeStyle = '#050505'; c.lineWidth = 4;
     c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
@@ -344,12 +345,12 @@
     c.font = `500 ${traitSize}px Arial`; fillTextOpticallyCentered(c, traitLine, secondRowCenter, my(250));
 
     assets.forEach(([key, color], i) => {
-      const y = 119 + i * 36;
+      const y = 120 + i * 36;
       c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3;
-      roundedRect(c, 65, y, 62, 31, 15).fill(); roundedRect(c, 65, y, 62, 31, 15).stroke();
-      c.fillStyle = color; roundedRect(c, 98, y + 2, 27, 27, 10).fill();
-      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 82, y + 16);
-      c.fillStyle = '#fff'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111, y + 16);
+      roundedRect(c, 68, y, 58, 29, 14).fill(); roundedRect(c, 68, y, 58, 29, 14).stroke();
+      c.fillStyle = color; roundedRect(c, 99, y + 2, 25, 25, 9).fill();
+      c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 83, y + 15);
+      c.fillStyle = '#fff'; c.font = '900 23px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111.5, y + 15);
     });
 
     const rarityCount = { Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] || 4;
@@ -369,11 +370,17 @@
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
-    drawSpeedGauge(c, card.speed, 68, 780, 69, 55);
-    if (layerImages.attackPill) c.drawImage(layerImages.attackPill, 133, 780, 69, 55);
-    else { c.fillStyle = '#d20710'; c.beginPath(); c.ellipse(168, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    if (layerImages.defensePill) c.drawImage(layerImages.defensePill, 466, 780, 126, 55);
-    else { c.fillStyle = '#252525'; roundedRect(c, 466, 783, 126, 49, 24).fill(); c.fillStyle = '#d7d7d7'; c.beginPath(); c.arc(498, 808, 25, 0, Math.PI * 2); c.fill(); }
+    // Draw each paired stat as one pod first, then inset its two values. This keeps
+    // the light ovals fully seated inside the shared charcoal container at every DPI.
+    c.fillStyle = '#252525'; c.strokeStyle = '#050505'; c.lineWidth = 3;
+    roundedRect(c, 65, 781, 139, 54, 27).fill(); roundedRect(c, 65, 781, 139, 54, 27).stroke();
+    drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
+    c.fillStyle = '#d20710'; c.strokeStyle = '#050505'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(168, 808, 32.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = '#252525'; c.strokeStyle = '#050505';
+    roundedRect(c, 465, 781, 129, 54, 27).fill(); roundedRect(c, 465, 781, 129, 54, 27).stroke();
+    c.fillStyle = '#d7d7d7'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(498, 808, 24.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
     c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
     c.fillStyle = '#050505'; fillTextOpticallyCentered(c, card.armor, 498, 808);
