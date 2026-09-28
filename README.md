@@ -15,7 +15,7 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Local set library with search, faction filtering, duplication, and multi-select
 - CSV, TSV, XLSX, XLS, and JSON bulk import
 - Individual or full-set JSON save/load
-- PNG, JPEG, and SVG export at 600 or 1,200 DPI
+- PNG, JPEG, and SVG export at 600 or 1,200 DPI; raster exports include physical-resolution metadata for print workflows
 - Local autosave in the browser; no account or server required
 
 ## Publish on GitHub Pages
@@ -25,6 +25,8 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 3. Select the `main` branch and `/ (root)` folder.
 
 The app is fully static. Spreadsheet `.xlsx` support loads SheetJS from jsDelivr; CSV, TSV, JSON, editing, and export continue to work without it.
+
+Print exports use a 2.5 × 3.5 inch trim plus 0.125 inch bleed on every side. This produces 1650 × 2250 pixels at 600 DPI or 3300 × 4500 pixels at 1,200 DPI. PNG exports include a `pHYs` resolution chunk and JPEG exports include JFIF density metadata.
 
 ## Card component assets
 

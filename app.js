@@ -15,7 +15,7 @@
   const layerImages = {};
   const layerSources = {
     reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
-    operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-reference-ring.png', assetPill: 'assets/asset-cost-pill.svg',
+    operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-ring.svg', assetPill: 'assets/asset-cost-pill.svg',
     speedXS: 'assets/speed-xs.svg', speedS: 'assets/speed-s.svg', speedM: 'assets/speed-m.svg', speedF: 'assets/speed-f.svg', speedXF: 'assets/speed-xf.svg',
     header0: 'assets/header-assets-0.svg', header1: 'assets/header-assets-1.svg', header2: 'assets/header-assets-2.svg',
     header3: 'assets/header-assets-3.svg', header4: 'assets/header-assets-4.svg', header5: 'assets/header-assets-5.svg',
@@ -193,6 +193,46 @@
     while (size > minSize) { c.font = `${weight} ${size}px Arial, sans-serif`; if (c.measureText(text).width <= maxWidth) break; size -= 1; }
     return size;
   }
+  function fillTextOpticallyCentered(c, text, centerX, centerY) {
+    c.save(); c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(String(text ?? ''), centerX, centerY + 1);
+    c.restore();
+  }
+  function drawCycleControl(c, centerX, centerY) {
+    const r = 23;
+    c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'round';
+    c.lineWidth = 3.2; c.beginPath(); c.arc(centerX, centerY, r, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.lineWidth = 2.2;
+    [[0,-29,0,-20],[0,20,0,29],[-29,0,-20,0],[20,0,29,0]].forEach(([x1,y1,x2,y2]) => {
+      c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
+    });
+    c.lineWidth = 4.2;
+    c.beginPath(); c.arc(centerX, centerY, 18, -2.95, -0.55); c.stroke();
+    c.beginPath(); c.moveTo(centerX+17, centerY-16); c.lineTo(centerX+25, centerY-14); c.lineTo(centerX+20, centerY-7); c.closePath(); c.fillStyle = '#050505'; c.fill();
+    c.beginPath(); c.arc(centerX, centerY, 18, 0.2, 2.55); c.stroke();
+    c.beginPath(); c.moveTo(centerX-17, centerY+16); c.lineTo(centerX-25, centerY+14); c.lineTo(centerX-20, centerY+7); c.closePath(); c.fill();
+    c.restore();
+  }
+  function drawSpeedGauge(c, speed, x, y, w, h) {
+    const marker = { XS: 27, S: 44, M: 62, F: 80, XF: 98 }[speed] || 62;
+    const markerX = x + marker * w / 125;
+    const cx = x + 62 * w / 125, cy = y + h / 2, rx = 56 * w / 125, ry = 45 * h / 100;
+    c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
+    c.fillStyle = '#ffe990'; c.fillRect(x, y, w, h);
+    c.fillStyle = '#f3a04b'; c.fillRect(x, y, markerX - x, h);
+    c.restore();
+    c.save(); c.fillStyle = '#050505';
+    c.beginPath(); c.moveTo(markerX - 6, y + 3); c.lineTo(markerX + 6, y + 3); c.lineTo(markerX, y + 14); c.closePath(); c.fill();
+    c.strokeStyle = '#050505'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke(); c.restore();
+  }
+  function drawTapIcon(c, centerX, centerY) {
+    c.save(); c.strokeStyle = '#050505'; c.fillStyle = '#050505'; c.lineCap = 'round'; c.lineWidth = 2.2;
+    c.beginPath(); c.arc(centerX, centerY, 7, -2.8, -0.35); c.stroke();
+    c.beginPath(); c.moveTo(centerX+5.7, centerY-5.3); c.lineTo(centerX+10, centerY-4.2); c.lineTo(centerX+7.2, centerY-1); c.closePath(); c.fill();
+    c.beginPath(); c.arc(centerX, centerY, 7, 0.35, 2.8); c.stroke();
+    c.beginPath(); c.moveTo(centerX-5.7, centerY+5.3); c.lineTo(centerX-10, centerY+4.2); c.lineTo(centerX-7.2, centerY+1); c.closePath(); c.fill();
+    c.beginPath(); c.arc(centerX, centerY, 2.2, 0, Math.PI * 2); c.fill(); c.restore();
+  }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
     const words = String(text || '').split(/\s+/).filter(Boolean); const lines = []; let line = '';
     for (const word of words) {
@@ -258,34 +298,31 @@
     c.textBaseline = 'middle'; c.textAlign = 'center';
     if (layerImages.construction) c.drawImage(layerImages.construction, 72, 70, 46, 46);
     else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(95, 93, 21, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    c.fillStyle = '#050505'; c.font = '900 33px "Arial Black", Arial'; c.fillText(card.construction, 95, 93);
+    c.fillStyle = '#050505'; c.font = '900 33px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 95, 93);
     if (layerImages.operation) c.drawImage(layerImages.operation, 121, 74, 38, 38);
     else { c.fillStyle = '#050505'; c.beginPath(); c.arc(140, 93, 19, 0, Math.PI * 2); c.fill(); }
-    c.fillStyle = '#fff'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.operation, 140, 93);
+    c.fillStyle = '#fff'; c.font = '900 29px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 140, 93);
 
     const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
     const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
-    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; c.fillText(title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
+    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextOpticallyCentered(c, title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      if (layerImages.cycleRing) c.drawImage(layerImages.cycleRing, 543, 65, 58, 54);
-      else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(572, 92, 22, 0, Math.PI * 2); c.fill(); c.stroke(); }
-      c.fillStyle = '#050505'; c.font = '900 29px "Arial Black", Arial'; c.fillText(card.cycle, 572, 93);
+      drawCycleControl(c, 572, 93);
+      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 572, 93);
     }
 
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
-    const header = layerImages[`header${assets.length}`];
-    if (header) c.drawImage(header, trim.x, trim.y, trim.w, trim.h);
     const firstRowLeft = assets.length ? 175 : 60;
     const secondRowLeft = assets.length > 1 ? 175 : 60;
 
-    // Keep the geometry deterministic even when a browser delays decoding an SVG layer.
-    // The matching SVG files remain exportable component assets; this canvas geometry is
-    // the authoritative fallback used by previews and high-resolution exports.
-    if (assets.length > 2) {
-      const droopBottom = 155 + assets.length * 63;
+    // Rebuild the complete variable header on top of the fixed frame so no legacy
+    // two-cost geometry can leak through at 0, 1, or 3–5 Asset Costs.
+    c.fillStyle = '#020202'; c.fillRect(mx(60), my(155), mw(930), mh(126));
+    if (assets.length) {
+      const railBottom = 155 + assets.length * 64;
       c.fillStyle = '#f4f3ef'; c.strokeStyle = '#050505'; c.lineWidth = 4;
-      c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(175), my(155)); c.lineTo(mx(175), my(droopBottom));
-      c.lineTo(mx(151), my(droopBottom + 20)); c.lineTo(mx(60), my(droopBottom + 20)); c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(175), my(155)); c.lineTo(mx(175), my(railBottom));
+      c.lineTo(mx(151), my(railBottom + 20)); c.lineTo(mx(60), my(railBottom + 20)); c.closePath(); c.fill(); c.stroke();
     }
     c.fillStyle = '#020202'; c.strokeStyle = '#050505'; c.lineWidth = 4;
     c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
@@ -301,18 +338,18 @@
     const secondRowWidth = mw(990 - secondRowLeft - 24);
 
     const loadoutSize = fitText(c, card.loadout, firstRowWidth, 23, 16, 500);
-    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; c.fillText(card.loadout, firstRowCenter, my(188));
+    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; fillTextOpticallyCentered(c, card.loadout, firstRowCenter, my(187));
     const traitLine = `${card.rarity} • ${card.traits}`;
     const traitSize = fitText(c, traitLine, secondRowWidth, 23, 15, 500);
-    c.font = `500 ${traitSize}px Arial`; c.fillText(traitLine, secondRowCenter, my(250));
+    c.font = `500 ${traitSize}px Arial`; fillTextOpticallyCentered(c, traitLine, secondRowCenter, my(250));
 
     assets.forEach(([key, color], i) => {
       const y = 119 + i * 36;
-      if (layerImages.assetPill) c.drawImage(layerImages.assetPill, 65, y, 62, 31);
-      else { c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3; roundedRect(c, 65, y, 62, 31, 15).fill(); roundedRect(c, 65, y, 62, 31, 15).stroke(); }
+      c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3;
+      roundedRect(c, 65, y, 62, 31, 15).fill(); roundedRect(c, 65, y, 62, 31, 15).stroke();
       c.fillStyle = color; roundedRect(c, 98, y + 2, 27, 27, 10).fill();
-      c.fillStyle = '#050505'; c.font = '900 28px "Arial Black", Arial'; c.fillText(card[`asset${key}`], 82, y + 16);
-      c.fillStyle = '#fff'; c.fillText(key, 111, y + 16);
+      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 82, y + 16);
+      c.fillStyle = '#fff'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111, y + 16);
     });
 
     const rarityCount = { Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] || 4;
@@ -324,8 +361,7 @@
     }
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    if (layerImages.activation) c.drawImage(layerImages.activation, 84, 650, 19, 19);
-    else { c.strokeStyle = '#050505'; c.lineWidth = 2.5; c.beginPath(); c.arc(94, 660, 7, .4, 5.5); c.stroke(); }
+    drawTapIcon(c, 94, 660);
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
     const ruleSegments = ruleParts.length > 1
       ? [{ text: `: ${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
@@ -333,16 +369,17 @@
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
-    const speedAsset = layerImages[`speed${card.speed}`] || layerImages.speedM;
-    if (speedAsset) c.drawImage(speedAsset, 68, 780, 69, 55);
-    else { c.fillStyle = '#ffe990'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.ellipse(103, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    drawSpeedGauge(c, card.speed, 68, 780, 69, 55);
     if (layerImages.attackPill) c.drawImage(layerImages.attackPill, 133, 780, 69, 55);
     else { c.fillStyle = '#d20710'; c.beginPath(); c.ellipse(168, 808, 33, 25, 0, 0, Math.PI * 2); c.fill(); c.stroke(); }
     if (layerImages.defensePill) c.drawImage(layerImages.defensePill, 466, 780, 126, 55);
     else { c.fillStyle = '#252525'; roundedRect(c, 466, 783, 126, 49, 24).fill(); c.fillStyle = '#d7d7d7'; c.beginPath(); c.arc(498, 808, 25, 0, Math.PI * 2); c.fill(); }
-    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = '900 35px "Arial Black", Arial'; c.fillText(card.speed, 103, 808);
-    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; c.fillText(card.attack, 168, 808); c.fillStyle = '#050505'; c.fillText(card.armor, 498, 808); c.fillStyle = '#fff'; c.fillText(card.structure, 559, 808);
-    c.fillStyle = '#050505'; c.font = '600 16px "Arial Narrow", Arial'; c.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 813); c.font = '500 11.5px Arial'; c.fillText(card.copyright || `${card.setCode} • ${card.collector}`, 330, 829);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
+    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
+    c.fillStyle = '#050505'; fillTextOpticallyCentered(c, card.armor, 498, 808);
+    c.fillStyle = '#fff'; fillTextOpticallyCentered(c, card.structure, 559, 808);
+    c.fillStyle = '#050505'; c.font = '600 16px "Arial Narrow", Arial'; fillTextOpticallyCentered(c, card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 806);
+    c.font = '500 11.5px Arial'; fillTextOpticallyCentered(c, card.copyright || `${card.setCode} • ${card.collector}`, 330, 821);
 
     if (guides) {
       c.save(); c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]); c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43); c.restore();
@@ -367,6 +404,37 @@
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+  async function stampPngDpi(blob, dpi) {
+    const source = new Uint8Array(await blob.arrayBuffer());
+    const ppm = Math.round(dpi / 0.0254);
+    const chunk = new Uint8Array(21); const view = new DataView(chunk.buffer);
+    view.setUint32(0, 9); chunk.set([112,72,89,115], 4); view.setUint32(8, ppm); view.setUint32(12, ppm); chunk[16] = 1;
+    view.setUint32(17, crc32(chunk.subarray(4, 17)));
+    const output = new Uint8Array(source.length + chunk.length);
+    output.set(source.subarray(0, 33), 0); output.set(chunk, 33); output.set(source.subarray(33), 54);
+    return new Blob([output], { type: 'image/png' });
+  }
+  async function stampJpegDpi(blob, dpi) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    for (let i = 2; i + 16 < bytes.length && bytes[i] === 0xff;) {
+      const marker = bytes[i + 1], length = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (marker === 0xe0 && String.fromCharCode(...bytes.subarray(i + 4, i + 9)) === 'JFIF\0') {
+        bytes[i + 11] = 1; bytes[i + 12] = dpi >> 8; bytes[i + 13] = dpi & 255; bytes[i + 14] = dpi >> 8; bytes[i + 15] = dpi & 255;
+        break;
+      }
+      if (!length) break; i += length + 2;
+    }
+    return new Blob([bytes], { type: 'image/jpeg' });
+  }
+
   async function renderCardBlob(card, format, dpi) {
     const factor = dpi / PPI; const out = document.createElement('canvas'); out.width = W * factor; out.height = H * factor;
     const outCtx = out.getContext('2d');
@@ -378,7 +446,8 @@
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2.75in" height="3.75in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(card.name)}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
       return new Blob([svg], { type: 'image/svg+xml' });
     }
-    return await new Promise(resolve => out.toBlob(resolve, format === 'jpeg' ? 'image/jpeg' : 'image/png', .95));
+    const raster = await new Promise(resolve => out.toBlob(resolve, format === 'jpeg' ? 'image/jpeg' : 'image/png', .95));
+    return format === 'jpeg' ? stampJpegDpi(raster, dpi) : stampPngDpi(raster, dpi);
   }
 
   async function exportCard(card = getFormData(), format = document.querySelector('#exportFormat').value, dpi = Number(document.querySelector('#exportDpi').value)) {
