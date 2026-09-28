@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 125 100">
+  <defs><clipPath id="p"><ellipse cx="62" cy="50" rx="56" ry="45"/></clipPath></defs>
+  <ellipse cx="62" cy="50" rx="56" ry="45" fill="#ffe990"/>
+  <path d="M0 0H44V100H0Z" fill="#f5a24c" clip-path="url(#p)"/>
+  <path d="M34 5H54L44 24Z" fill="#050505"/>
+  <ellipse cx="62" cy="50" rx="56" ry="45" fill="none" stroke="#050505" stroke-width="6"/>
+</svg>
