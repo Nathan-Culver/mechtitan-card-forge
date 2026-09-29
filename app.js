@@ -410,7 +410,7 @@
       c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 568.5, 91.5);
     }
 
-    const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
+    const assets = [['L','#0b5fae'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#117d45']].filter(([key]) => card[`asset${key}`] !== '');
     // Leave a narrow black reveal between the white Asset rail and header boxes.
     // This keeps their centered strokes visually separate instead of touching.
     const firstRowLeft = assets.length ? 185 : 60;
@@ -453,9 +453,16 @@
       assetFill.addColorStop(0, '#e9e5d9'); assetFill.addColorStop(.42, '#d2d3cd'); assetFill.addColorStop(.72, '#e2dfd3'); assetFill.addColorStop(1, '#aeb3ae');
       c.fillStyle = assetFill; roundedRect(c, 70, y, 54, 29, 14).fill();
       strokeEmbossedRoundedRect(c, 70, y, 54, 29, 14, 2.5);
-      const colorTexture = c.createLinearGradient(98, y + 3, 121, y + 26);
-      colorTexture.addColorStop(0, '#d5c9ad'); colorTexture.addColorStop(.1, color); colorTexture.addColorStop(.58, color); colorTexture.addColorStop(1, '#252728');
-      c.fillStyle = colorTexture; roundedRect(c, 98, y + 3, 23, 23, 8).fill();
+      // Clip the color field to the complete pill silhouette so it seats directly
+      // against the right and bottom inner edges instead of leaving a pale gap.
+      c.save();
+      roundedRect(c, 70, y, 54, 29, 14).clip();
+      const colorTexture = c.createLinearGradient(97, y, 124, y + 29);
+      colorTexture.addColorStop(0, '#b8ad94'); colorTexture.addColorStop(.12, color); colorTexture.addColorStop(.68, color); colorTexture.addColorStop(1, '#16191a');
+      c.fillStyle = colorTexture; c.fillRect(97, y, 27, 29);
+      c.restore();
+      // Redraw the outside edge over the clipped fill for a clean, continuous rim.
+      strokeEmbossedRoundedRect(c, 70, y, 54, 29, 14, 2.5);
       c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 84, y + 15);
       c.fillStyle = '#fff'; c.font = '900 22px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 109.5, y + 15);
     });
