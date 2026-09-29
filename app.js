@@ -199,18 +199,18 @@
     c.restore();
   }
   function drawCycleControl(c, centerX, centerY) {
-    c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'square';
-    c.lineWidth = 3.2; c.beginPath(); c.arc(centerX, centerY, 20, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.lineWidth = 2.5;
-    [[0,-26,0,-20],[0,20,0,26],[-26,0,-20,0],[20,0,26,0]].forEach(([x1,y1,x2,y2]) => {
+    c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
+    c.beginPath(); c.arc(centerX, centerY, 19, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 4;
+    [[0,-26,0,-18],[0,18,0,26],[-26,0,-18,0],[18,0,26,0]].forEach(([x1,y1,x2,y2]) => {
       c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
     });
-    c.lineCap = 'round'; c.lineWidth = 4.5;
-    c.beginPath(); c.arc(centerX, centerY, 16.5, -2.92, -0.48); c.stroke();
-    c.beginPath(); c.arc(centerX, centerY, 16.5, 0.22, 2.66); c.stroke();
+    c.lineCap = 'round'; c.lineWidth = 7.5;
+    c.beginPath(); c.arc(centerX, centerY, 18.5, Math.PI + .30, Math.PI * 2 - .30); c.stroke();
+    c.beginPath(); c.arc(centerX, centerY, 18.5, .30, Math.PI - .30); c.stroke();
     c.fillStyle = '#050505';
-    c.beginPath(); c.moveTo(centerX + 14, centerY - 17); c.lineTo(centerX + 24, centerY - 15); c.lineTo(centerX + 18, centerY - 6); c.closePath(); c.fill();
-    c.beginPath(); c.moveTo(centerX - 14, centerY + 17); c.lineTo(centerX - 24, centerY + 15); c.lineTo(centerX - 18, centerY + 6); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX + 20.5, centerY - 13.5); c.lineTo(centerX + 27, centerY + 6); c.lineTo(centerX + 8.5, centerY + 5); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX - 20.5, centerY + 13.5); c.lineTo(centerX - 27, centerY - 6); c.lineTo(centerX - 8.5, centerY - 5); c.closePath(); c.fill();
     c.restore();
   }
   function drawSpeedGauge(c, speed, x, y, w, h) {
