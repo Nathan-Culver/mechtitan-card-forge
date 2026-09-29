@@ -202,34 +202,35 @@
   function strokeEmbossedEllipse(c, cx, cy, rx, ry, width = 4) {
     c.save();
     c.lineJoin = 'round';
-    c.lineWidth = width + 2.4;
-    c.strokeStyle = 'rgba(0, 0, 0, .92)';
-    c.beginPath(); c.ellipse(cx + .7, cy + .9, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+    c.lineWidth = width + 1.2;
+    c.strokeStyle = 'rgba(0, 0, 0, .78)';
+    c.beginPath(); c.ellipse(cx + .55, cy + .7, rx, ry, 0, 0, Math.PI * 2); c.stroke();
     const rim = c.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
-    rim.addColorStop(0, '#e8eef0'); rim.addColorStop(.16, '#798b94');
-    rim.addColorStop(.38, '#171b1e'); rim.addColorStop(.68, '#020304');
-    rim.addColorStop(.86, '#3d4b52'); rim.addColorStop(1, '#a9b4b8');
-    c.lineWidth = width;
+    rim.addColorStop(0, '#8e9691'); rim.addColorStop(.18, '#59615f');
+    rim.addColorStop(.42, '#252a2a'); rim.addColorStop(.7, '#090b0c');
+    rim.addColorStop(.88, '#414846'); rim.addColorStop(1, '#6f7772');
+    c.lineWidth = width * .9;
     c.strokeStyle = rim;
     c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke();
-    c.lineWidth = Math.max(.8, width * .24);
-    c.strokeStyle = 'rgba(255,255,255,.48)';
+    c.lineWidth = Math.max(.55, width * .17);
+    c.strokeStyle = 'rgba(220,207,174,.24)';
+    c.setLineDash([2.4, 1.2, .7, 1.8]);
     c.beginPath(); c.ellipse(cx - .45, cy - .45, rx - width * .62, ry - width * .62, 0, Math.PI * 1.02, Math.PI * 1.72); c.stroke();
-    c.strokeStyle = 'rgba(0,0,0,.72)';
+    c.setLineDash([]); c.strokeStyle = 'rgba(0,0,0,.52)';
     c.beginPath(); c.ellipse(cx + .45, cy + .55, rx - width * .62, ry - width * .62, 0, -.02, Math.PI * .76); c.stroke();
     c.restore();
   }
   function strokeEmbossedRoundedRect(c, x, y, w, h, r, width = 3) {
     c.save();
-    c.lineWidth = width + 2; c.strokeStyle = 'rgba(0,0,0,.92)';
+    c.lineWidth = width + 1.1; c.strokeStyle = 'rgba(0,0,0,.78)';
     roundedRect(c, x + .5, y + .8, w, h, r).stroke();
     const rim = c.createLinearGradient(x, y, x + w, y + h);
-    rim.addColorStop(0, '#f2f4f3'); rim.addColorStop(.17, '#76868d');
-    rim.addColorStop(.44, '#101315'); rim.addColorStop(.75, '#030405'); rim.addColorStop(1, '#9aa6aa');
-    c.lineWidth = width; c.strokeStyle = rim; roundedRect(c, x, y, w, h, r).stroke();
-    c.lineWidth = .8; c.strokeStyle = 'rgba(255,255,255,.55)';
+    rim.addColorStop(0, '#929993'); rim.addColorStop(.2, '#5d6460');
+    rim.addColorStop(.46, '#222625'); rim.addColorStop(.76, '#080a0b'); rim.addColorStop(1, '#737a74');
+    c.lineWidth = width * .9; c.strokeStyle = rim; roundedRect(c, x, y, w, h, r).stroke();
+    c.lineWidth = .65; c.strokeStyle = 'rgba(220,207,174,.26)'; c.setLineDash([3, 1.4, .8, 1.8]);
     c.beginPath(); c.moveTo(x + r, y + 2); c.lineTo(x + w - r, y + 2); c.stroke();
-    c.strokeStyle = 'rgba(0,0,0,.65)';
+    c.setLineDash([]); c.strokeStyle = 'rgba(0,0,0,.5)';
     c.beginPath(); c.moveTo(x + r, y + h - 2); c.lineTo(x + w - r, y + h - 2); c.stroke();
     c.restore();
   }
@@ -239,14 +240,14 @@
     colors.forEach((color, i) => base.addColorStop(i / (colors.length - 1), color));
     c.fillStyle = base; c.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
     const glow = c.createRadialGradient(cx - rx * .38, cy - ry * .44, 1, cx, cy, Math.max(rx, ry) * 1.35);
-    glow.addColorStop(0, 'rgba(255,255,255,.58)'); glow.addColorStop(.38, 'rgba(255,255,255,.08)'); glow.addColorStop(1, 'rgba(0,0,0,.46)');
+    glow.addColorStop(0, 'rgba(238,224,190,.18)'); glow.addColorStop(.42, 'rgba(255,255,255,.03)'); glow.addColorStop(1, 'rgba(0,0,0,.22)');
     c.fillStyle = glow; c.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
     c.globalCompositeOperation = 'soft-light';
     for (let i = 0; i < 18; i++) {
       const px = cx - rx + ((i * 37 + seed * 11) % 97) / 96 * rx * 2;
       const py = cy - ry + ((i * 61 + seed * 17) % 89) / 88 * ry * 2;
       const size = 1.2 + ((i * 13 + seed) % 7) * .34;
-      c.fillStyle = i % 3 ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.18)';
+      c.fillStyle = i % 3 ? 'rgba(235,218,177,.13)' : 'rgba(0,0,0,.14)';
       c.beginPath(); c.ellipse(px, py, size * 1.8, size, -.45, 0, Math.PI * 2); c.fill();
     }
     c.globalCompositeOperation = 'source-over'; c.restore();
@@ -254,7 +255,6 @@
   function drawCycleControl(c, centerX, centerY) {
     c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
     c.beginPath(); c.arc(centerX, centerY, 18.5, 0, Math.PI * 2); c.fill();
-    strokeEmbossedEllipse(c, centerX, centerY, 25.5, 25.5, 2.2);
     c.lineWidth = 4;
     [[0,-26,0,-18],[0,18,0,26],[-26,0,-18,0],[18,0,26,0]].forEach(([x1,y1,x2,y2]) => {
       c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
@@ -267,6 +267,10 @@
     c.fillStyle = '#050505';
     c.beginPath(); c.moveTo(centerX + 20, centerY - 14); c.lineTo(centerX + 24.5, centerY + 5); c.lineTo(centerX + 10, centerY + 4); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(centerX - 20, centerY + 14); c.lineTo(centerX - 24.5, centerY - 5); c.lineTo(centerX - 10, centerY - 4); c.closePath(); c.fill();
+    c.lineCap = 'round'; c.lineWidth = .8; c.strokeStyle = 'rgba(219,207,177,.2)'; c.setLineDash([2.4, 1.6]);
+    c.beginPath(); c.arc(centerX - .35, centerY - .35, 17.4, Math.PI + .3, Math.PI * 2 - .64); c.stroke();
+    c.beginPath(); c.arc(centerX - .35, centerY - .35, 17.4, .3, Math.PI - .64); c.stroke();
+    c.setLineDash([]);
     c.restore();
   }
   function drawSpeedGauge(c, speed, x, y, w, h) {
@@ -275,14 +279,14 @@
     const cx = x + 62 * w / 125, cy = y + h / 2, rx = 56 * w / 125, ry = 45 * h / 100;
     c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
     const fastSide = c.createLinearGradient(x, y, x + w, y + h);
-    fastSide.addColorStop(0, '#fff2aa'); fastSide.addColorStop(.35, '#f6d866'); fastSide.addColorStop(.72, '#ffe88d'); fastSide.addColorStop(1, '#b98b27');
+    fastSide.addColorStop(0, '#e9cf79'); fastSide.addColorStop(.35, '#d8b84e'); fastSide.addColorStop(.72, '#efd277'); fastSide.addColorStop(1, '#9e7625');
     c.fillStyle = fastSide; c.fillRect(x, y, w, h);
     const slowSide = c.createLinearGradient(x, y, markerX, y + h);
-    slowSide.addColorStop(0, '#ffd26c'); slowSide.addColorStop(.3, '#ef7a2d'); slowSide.addColorStop(.68, '#ffad43'); slowSide.addColorStop(1, '#b9491c');
+    slowSide.addColorStop(0, '#e4ad50'); slowSide.addColorStop(.3, '#c86429'); slowSide.addColorStop(.68, '#e18c37'); slowSide.addColorStop(1, '#8e3b1c');
     c.fillStyle = slowSide; c.fillRect(x, y, markerX - x, h);
     c.globalCompositeOperation = 'soft-light';
     for (let i = 0; i < 15; i++) {
-      c.fillStyle = i % 3 ? 'rgba(255,255,255,.15)' : 'rgba(66,25,0,.2)';
+      c.fillStyle = i % 3 ? 'rgba(236,210,155,.13)' : 'rgba(66,25,0,.18)';
       c.beginPath(); c.ellipse(x + ((i * 29) % 67), y + ((i * 19) % 47), 3.2, 1.35, -.45, 0, Math.PI * 2); c.fill();
     }
     c.globalCompositeOperation = 'source-over';
@@ -444,11 +448,11 @@
     assets.forEach(([key, color], i) => {
       const y = 120 + i * 36;
       const assetFill = c.createLinearGradient(68, y, 126, y + 29);
-      assetFill.addColorStop(0, '#ffffff'); assetFill.addColorStop(.42, '#e9ebe8'); assetFill.addColorStop(.72, '#ffffff'); assetFill.addColorStop(1, '#b8c0c1');
+      assetFill.addColorStop(0, '#e9e5d9'); assetFill.addColorStop(.42, '#d2d3cd'); assetFill.addColorStop(.72, '#e2dfd3'); assetFill.addColorStop(1, '#aeb3ae');
       c.fillStyle = assetFill; roundedRect(c, 68, y, 58, 29, 14).fill();
       strokeEmbossedRoundedRect(c, 68, y, 58, 29, 14, 2.7);
       const colorTexture = c.createLinearGradient(99, y + 2, 124, y + 27);
-      colorTexture.addColorStop(0, '#ffffff'); colorTexture.addColorStop(.08, color); colorTexture.addColorStop(.55, color); colorTexture.addColorStop(1, '#111111');
+      colorTexture.addColorStop(0, '#d5c9ad'); colorTexture.addColorStop(.1, color); colorTexture.addColorStop(.58, color); colorTexture.addColorStop(1, '#252728');
       c.fillStyle = colorTexture; roundedRect(c, 99, y + 2, 25, 25, 9).fill();
       c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 83, y + 15);
       c.fillStyle = '#fff'; c.font = '900 23px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111.5, y + 15);
@@ -478,11 +482,11 @@
     if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, 453, 776, 151, 64);
     else drawStatHousing(c, 453, 776, 151, 64, true);
     drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
-    fillTexturedEllipse(c, 168, 808, 32.5, 24.5, ['#ff6266', '#e20a17', '#9d0008', '#f42b32', '#650008'], 7);
+    fillTexturedEllipse(c, 168, 808, 32.5, 24.5, ['#cf4a4d', '#b70b15', '#7e090e', '#c82a2f', '#52080b'], 7);
     strokeEmbossedEllipse(c, 168, 808, 32.5, 24.5, 3.2);
-    fillTexturedEllipse(c, 498, 808, 24.5, 24.5, ['#ffffff', '#c9d2d5', '#818b90', '#e8eceb', '#777f83'], 13);
+    fillTexturedEllipse(c, 498, 808, 24.5, 24.5, ['#deddd4', '#b4bbb9', '#737b7c', '#c9cbc4', '#686f70'], 13);
     strokeEmbossedEllipse(c, 498, 808, 24.5, 24.5, 3.1);
-    fillTexturedEllipse(c, 559, 808, 31.5, 23.5, ['#596168', '#23272b', '#0a0c0e', '#3d444a', '#111417'], 19);
+    fillTexturedEllipse(c, 559, 808, 31.5, 23.5, ['#454b4d', '#252827', '#0d0f0f', '#343938', '#151817'], 19);
     strokeEmbossedEllipse(c, 559, 808, 31.5, 23.5, 2.7);
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
     c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
