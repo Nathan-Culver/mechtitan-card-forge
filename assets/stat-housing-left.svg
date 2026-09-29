@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 149 64" aria-label="Speed and Attack frame housing">
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#176183"/><stop offset=".23" stop-color="#082b40"/>
+      <stop offset=".62" stop-color="#020d17"/><stop offset="1" stop-color="#0b3850"/>
+    </linearGradient>
+    <linearGradient id="recess" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#343638"/><stop offset=".45" stop-color="#202326"/><stop offset="1" stop-color="#111417"/>
+    </linearGradient>
+  </defs>
+  <path d="M13 2h118l16 14v31l-14 15H16L2 50V16Z" fill="url(#shell)" stroke="#020508" stroke-width="4"/>
+  <rect x="7" y="7" width="135" height="50" rx="25" fill="url(#recess)" stroke="#07121a" stroke-width="3"/>
+  <path d="M17 5h107" stroke="#2d86a7" stroke-width="2"/><path d="M19 59h108" stroke="#a38a6b" stroke-width="1.8"/>
+</svg>
