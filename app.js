@@ -199,9 +199,62 @@
     c.fillText(String(text ?? ''), centerX, centerY + 1);
     c.restore();
   }
+  function strokeEmbossedEllipse(c, cx, cy, rx, ry, width = 4) {
+    c.save();
+    c.lineJoin = 'round';
+    c.lineWidth = width + 2.4;
+    c.strokeStyle = 'rgba(0, 0, 0, .92)';
+    c.beginPath(); c.ellipse(cx + .7, cy + .9, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+    const rim = c.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
+    rim.addColorStop(0, '#e8eef0'); rim.addColorStop(.16, '#798b94');
+    rim.addColorStop(.38, '#171b1e'); rim.addColorStop(.68, '#020304');
+    rim.addColorStop(.86, '#3d4b52'); rim.addColorStop(1, '#a9b4b8');
+    c.lineWidth = width;
+    c.strokeStyle = rim;
+    c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+    c.lineWidth = Math.max(.8, width * .24);
+    c.strokeStyle = 'rgba(255,255,255,.48)';
+    c.beginPath(); c.ellipse(cx - .45, cy - .45, rx - width * .62, ry - width * .62, 0, Math.PI * 1.02, Math.PI * 1.72); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,.72)';
+    c.beginPath(); c.ellipse(cx + .45, cy + .55, rx - width * .62, ry - width * .62, 0, -.02, Math.PI * .76); c.stroke();
+    c.restore();
+  }
+  function strokeEmbossedRoundedRect(c, x, y, w, h, r, width = 3) {
+    c.save();
+    c.lineWidth = width + 2; c.strokeStyle = 'rgba(0,0,0,.92)';
+    roundedRect(c, x + .5, y + .8, w, h, r).stroke();
+    const rim = c.createLinearGradient(x, y, x + w, y + h);
+    rim.addColorStop(0, '#f2f4f3'); rim.addColorStop(.17, '#76868d');
+    rim.addColorStop(.44, '#101315'); rim.addColorStop(.75, '#030405'); rim.addColorStop(1, '#9aa6aa');
+    c.lineWidth = width; c.strokeStyle = rim; roundedRect(c, x, y, w, h, r).stroke();
+    c.lineWidth = .8; c.strokeStyle = 'rgba(255,255,255,.55)';
+    c.beginPath(); c.moveTo(x + r, y + 2); c.lineTo(x + w - r, y + 2); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,.65)';
+    c.beginPath(); c.moveTo(x + r, y + h - 2); c.lineTo(x + w - r, y + h - 2); c.stroke();
+    c.restore();
+  }
+  function fillTexturedEllipse(c, cx, cy, rx, ry, colors, seed = 0) {
+    c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
+    const base = c.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
+    colors.forEach((color, i) => base.addColorStop(i / (colors.length - 1), color));
+    c.fillStyle = base; c.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
+    const glow = c.createRadialGradient(cx - rx * .38, cy - ry * .44, 1, cx, cy, Math.max(rx, ry) * 1.35);
+    glow.addColorStop(0, 'rgba(255,255,255,.58)'); glow.addColorStop(.38, 'rgba(255,255,255,.08)'); glow.addColorStop(1, 'rgba(0,0,0,.46)');
+    c.fillStyle = glow; c.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
+    c.globalCompositeOperation = 'soft-light';
+    for (let i = 0; i < 18; i++) {
+      const px = cx - rx + ((i * 37 + seed * 11) % 97) / 96 * rx * 2;
+      const py = cy - ry + ((i * 61 + seed * 17) % 89) / 88 * ry * 2;
+      const size = 1.2 + ((i * 13 + seed) % 7) * .34;
+      c.fillStyle = i % 3 ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.18)';
+      c.beginPath(); c.ellipse(px, py, size * 1.8, size, -.45, 0, Math.PI * 2); c.fill();
+    }
+    c.globalCompositeOperation = 'source-over'; c.restore();
+  }
   function drawCycleControl(c, centerX, centerY) {
     c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
     c.beginPath(); c.arc(centerX, centerY, 18.5, 0, Math.PI * 2); c.fill();
+    strokeEmbossedEllipse(c, centerX, centerY, 25.5, 25.5, 2.2);
     c.lineWidth = 4;
     [[0,-26,0,-18],[0,18,0,26],[-26,0,-18,0],[18,0,26,0]].forEach(([x1,y1,x2,y2]) => {
       c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
@@ -221,12 +274,23 @@
     const markerX = x + marker * w / 125;
     const cx = x + 62 * w / 125, cy = y + h / 2, rx = 56 * w / 125, ry = 45 * h / 100;
     c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
-    c.fillStyle = '#ffe990'; c.fillRect(x, y, w, h);
-    c.fillStyle = '#f3a04b'; c.fillRect(x, y, markerX - x, h);
+    const fastSide = c.createLinearGradient(x, y, x + w, y + h);
+    fastSide.addColorStop(0, '#fff2aa'); fastSide.addColorStop(.35, '#f6d866'); fastSide.addColorStop(.72, '#ffe88d'); fastSide.addColorStop(1, '#b98b27');
+    c.fillStyle = fastSide; c.fillRect(x, y, w, h);
+    const slowSide = c.createLinearGradient(x, y, markerX, y + h);
+    slowSide.addColorStop(0, '#ffd26c'); slowSide.addColorStop(.3, '#ef7a2d'); slowSide.addColorStop(.68, '#ffad43'); slowSide.addColorStop(1, '#b9491c');
+    c.fillStyle = slowSide; c.fillRect(x, y, markerX - x, h);
+    c.globalCompositeOperation = 'soft-light';
+    for (let i = 0; i < 15; i++) {
+      c.fillStyle = i % 3 ? 'rgba(255,255,255,.15)' : 'rgba(66,25,0,.2)';
+      c.beginPath(); c.ellipse(x + ((i * 29) % 67), y + ((i * 19) % 47), 3.2, 1.35, -.45, 0, Math.PI * 2); c.fill();
+    }
+    c.globalCompositeOperation = 'source-over';
     c.restore();
     c.save(); c.fillStyle = '#050505';
     c.beginPath(); c.moveTo(markerX - 6, y + 3); c.lineTo(markerX + 6, y + 3); c.lineTo(markerX, y + 14); c.closePath(); c.fill();
-    c.strokeStyle = '#050505'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke(); c.restore();
+    c.restore();
+    strokeEmbossedEllipse(c, cx, cy, rx, ry, 3.4);
   }
   function drawStatHousing(c, x, y, w, h, mirrored = false) {
     c.save();
@@ -325,9 +389,11 @@
     c.textBaseline = 'middle'; c.textAlign = 'center';
     if (layerImages.construction) c.drawImage(layerImages.construction, 72, 69, 44, 44);
     else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 91, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    strokeEmbossedEllipse(c, 94, 91, 20, 20, 3.1);
     c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 95, 93);
     if (layerImages.operation) c.drawImage(layerImages.operation, 121, 73, 37, 37);
     else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 91.5, 18.5, 0, Math.PI * 2); c.fill(); }
+    strokeEmbossedEllipse(c, 139.5, 91.5, 18, 18, 2.7);
     c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 91.5);
 
     const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
@@ -377,9 +443,13 @@
 
     assets.forEach(([key, color], i) => {
       const y = 120 + i * 36;
-      c.fillStyle = '#f5f5f3'; c.strokeStyle = '#050505'; c.lineWidth = 3;
-      roundedRect(c, 68, y, 58, 29, 14).fill(); roundedRect(c, 68, y, 58, 29, 14).stroke();
-      c.fillStyle = color; roundedRect(c, 99, y + 2, 25, 25, 9).fill();
+      const assetFill = c.createLinearGradient(68, y, 126, y + 29);
+      assetFill.addColorStop(0, '#ffffff'); assetFill.addColorStop(.42, '#e9ebe8'); assetFill.addColorStop(.72, '#ffffff'); assetFill.addColorStop(1, '#b8c0c1');
+      c.fillStyle = assetFill; roundedRect(c, 68, y, 58, 29, 14).fill();
+      strokeEmbossedRoundedRect(c, 68, y, 58, 29, 14, 2.7);
+      const colorTexture = c.createLinearGradient(99, y + 2, 124, y + 27);
+      colorTexture.addColorStop(0, '#ffffff'); colorTexture.addColorStop(.08, color); colorTexture.addColorStop(.55, color); colorTexture.addColorStop(1, '#111111');
+      c.fillStyle = colorTexture; roundedRect(c, 99, y + 2, 25, 25, 9).fill();
       c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 83, y + 15);
       c.fillStyle = '#fff'; c.font = '900 23px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111.5, y + 15);
     });
@@ -408,14 +478,12 @@
     if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, 453, 776, 151, 64);
     else drawStatHousing(c, 453, 776, 151, 64, true);
     drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
-    const attackFill = c.createRadialGradient(158, 800, 3, 168, 808, 35);
-    attackFill.addColorStop(0, '#ef1b27'); attackFill.addColorStop(1, '#be030b');
-    c.fillStyle = attackFill; c.strokeStyle = '#050505'; c.lineWidth = 3;
-    c.beginPath(); c.ellipse(168, 808, 32.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-    const armorFill = c.createRadialGradient(490, 800, 2, 498, 808, 27);
-    armorFill.addColorStop(0, '#f2f2f1'); armorFill.addColorStop(1, '#bfc2c4');
-    c.fillStyle = armorFill; c.strokeStyle = '#050505'; c.lineWidth = 3;
-    c.beginPath(); c.ellipse(498, 808, 24.5, 24.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    fillTexturedEllipse(c, 168, 808, 32.5, 24.5, ['#ff6266', '#e20a17', '#9d0008', '#f42b32', '#650008'], 7);
+    strokeEmbossedEllipse(c, 168, 808, 32.5, 24.5, 3.2);
+    fillTexturedEllipse(c, 498, 808, 24.5, 24.5, ['#ffffff', '#c9d2d5', '#818b90', '#e8eceb', '#777f83'], 13);
+    strokeEmbossedEllipse(c, 498, 808, 24.5, 24.5, 3.1);
+    fillTexturedEllipse(c, 559, 808, 31.5, 23.5, ['#596168', '#23272b', '#0a0c0e', '#3d444a', '#111417'], 19);
+    strokeEmbossedEllipse(c, 559, 808, 31.5, 23.5, 2.7);
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
     c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
     c.fillStyle = '#050505'; fillTextOpticallyCentered(c, card.armor, 498, 808);
