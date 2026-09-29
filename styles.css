@@ -61,7 +61,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
 .asset { display: flex; align-items: stretch; border: 1px solid var(--line); background: var(--input); }
 .asset b { width: 28px; display: grid; place-items: center; color: #071018; }
 .asset input { min-width: 0; border: 0; padding-inline: .25rem; text-align: center; }
-.asset-l b { background: #4eb7ff; } .asset-p b { background: #bc78e8; } .asset-s b { background: #f3cc45; } .asset-t b { background: #ff7fb2; } .asset-u b { background: #6ed28f; }
+.asset-l b { background: #277fc0; } .asset-p b { background: #bc78e8; } .asset-s b { background: #f3cc45; } .asset-t b { background: #ff7fb2; } .asset-u b { background: #2c985c; }
 .upload-zone { border: 1px dashed var(--line-bright); padding: 2.1rem 1.2rem; text-align: center; margin-bottom: 1.2rem; background: #09121a; }
 .upload-zone p, .hint, .bulk-box p { color: var(--muted); font-size: .78rem; line-height: 1.45; }
 .toggle-row { display: flex; gap: .65rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); font-size: .86rem; }
