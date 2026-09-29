@@ -39,7 +39,8 @@ The editable renderer keeps each variable card component separate. The most impo
 - `assets/cycle-reference-ring.png` and `assets/cycle-ring.svg` — Cycle symbol
 - `assets/tap-icon.svg` — Tap/activation symbol used in rules text
 - `assets/speed-xs.svg` through `assets/speed-xf.svg` — the five moving Speed indicators
-- `assets/attack-pill.svg` and `assets/defense-pill.svg` — bottom combat stats
+- `assets/stat-housing-left.svg` and `assets/stat-housing-right.svg` — frame-integrated bottom stat housings
+- `assets/attack-pill.svg` and `assets/defense-pill.svg` — inset combat-stat gauges
 - `assets/rarity-bolt-v2.png` — silver bolt-head rarity dots
 
 ## Spreadsheet columns

@@ -19,7 +19,8 @@
     speedXS: 'assets/speed-xs.svg', speedS: 'assets/speed-s.svg', speedM: 'assets/speed-m.svg', speedF: 'assets/speed-f.svg', speedXF: 'assets/speed-xf.svg',
     header0: 'assets/header-assets-0.svg', header1: 'assets/header-assets-1.svg', header2: 'assets/header-assets-2.svg',
     header3: 'assets/header-assets-3.svg', header4: 'assets/header-assets-4.svg', header5: 'assets/header-assets-5.svg',
-    attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg'
+    attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg',
+    leftStatHousing: 'assets/stat-housing-left.svg', rightStatHousing: 'assets/stat-housing-right.svg'
   };
   const REFERENCE_ART = 'assets/naga-d-sample-art.png';
   let history = [];
@@ -225,6 +226,29 @@
     c.beginPath(); c.moveTo(markerX - 6, y + 3); c.lineTo(markerX + 6, y + 3); c.lineTo(markerX, y + 14); c.closePath(); c.fill();
     c.strokeStyle = '#050505'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke(); c.restore();
   }
+  function drawStatHousing(c, x, y, w, h, mirrored = false) {
+    c.save();
+    const shell = c.createLinearGradient(x, y, x, y + h);
+    shell.addColorStop(0, '#176183'); shell.addColorStop(.23, '#082b40'); shell.addColorStop(.62, '#020d17'); shell.addColorStop(1, '#0b3850');
+    c.fillStyle = shell; c.strokeStyle = '#020508'; c.lineWidth = 3.5;
+    c.beginPath();
+    if (mirrored) {
+      c.moveTo(x + 18, y); c.lineTo(x + w - 13, y); c.lineTo(x + w, y + 15); c.lineTo(x + w, y + h - 12);
+      c.lineTo(x + w - 16, y + h); c.lineTo(x + 15, y + h); c.lineTo(x, y + h - 17); c.lineTo(x, y + 15);
+    } else {
+      c.moveTo(x + 13, y); c.lineTo(x + w - 18, y); c.lineTo(x + w, y + 15); c.lineTo(x + w, y + h - 17);
+      c.lineTo(x + w - 15, y + h); c.lineTo(x + 16, y + h); c.lineTo(x, y + h - 12); c.lineTo(x, y + 15);
+    }
+    c.closePath(); c.fill(); c.stroke();
+    const recess = c.createLinearGradient(x, y + 5, x, y + h - 5);
+    recess.addColorStop(0, '#343638'); recess.addColorStop(.45, '#202326'); recess.addColorStop(1, '#111417');
+    c.fillStyle = recess; c.strokeStyle = '#07121a'; c.lineWidth = 2.5;
+    roundedRect(c, x + 6, y + 6, w - 12, h - 12, (h - 12) / 2).fill();
+    roundedRect(c, x + 6, y + 6, w - 12, h - 12, (h - 12) / 2).stroke();
+    c.strokeStyle = '#2d86a7'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x + 17, y + 5); c.lineTo(x + w - 25, y + 5); c.stroke();
+    c.strokeStyle = '#a38a6b'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + 19, y + h - 5); c.lineTo(x + w - 22, y + h - 5); c.stroke();
+    c.restore();
+  }
   function drawTapIcon(c, centerX, centerY) {
     c.save(); c.translate(centerX - 10.5, centerY - 10.5); c.scale(.21, .21);
     c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
@@ -371,9 +395,12 @@
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
-    // The engraved charcoal pods are already part of the calibrated metal frame.
-    // Draw only the inset gauges here so the pod remains one integrated component
-    // instead of stacking a second dark capsule over the frame artwork.
+    // Cover the plain frame pods with beveled blue-black housings that visually
+    // lock into the surrounding metalwork, then seat the stat gauges as insets.
+    if (layerImages.leftStatHousing) c.drawImage(layerImages.leftStatHousing, 58, 776, 149, 64);
+    else drawStatHousing(c, 58, 776, 149, 64, false);
+    if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, 453, 776, 151, 64);
+    else drawStatHousing(c, 453, 776, 151, 64, true);
     drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
     const attackFill = c.createRadialGradient(158, 800, 3, 168, 808, 35);
     attackFill.addColorStop(0, '#ef1b27'); attackFill.addColorStop(1, '#be030b');
