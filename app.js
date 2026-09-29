@@ -226,12 +226,10 @@
     c.strokeStyle = '#050505'; c.lineWidth = 3.4; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.stroke(); c.restore();
   }
   function drawTapIcon(c, centerX, centerY) {
-    c.save(); c.strokeStyle = '#050505'; c.fillStyle = '#050505'; c.lineCap = 'round';
-    c.lineWidth = 2.25; c.beginPath(); c.arc(centerX, centerY, 7.2, -2.96, -0.72); c.stroke();
-    c.beginPath(); c.arc(centerX, centerY, 7.2, 0.18, 2.42); c.stroke();
-    c.beginPath(); c.moveTo(centerX + 4.8, centerY - 7.7); c.lineTo(centerX + 10.1, centerY - 6); c.lineTo(centerX + 6.1, centerY - 1.9); c.closePath(); c.fill();
-    c.beginPath(); c.moveTo(centerX - 4.8, centerY + 7.7); c.lineTo(centerX - 10.1, centerY + 6); c.lineTo(centerX - 6.1, centerY + 1.9); c.closePath(); c.fill();
-    c.lineWidth = 1.8; c.beginPath(); c.arc(centerX, centerY, 2.6, 0, Math.PI * 2); c.stroke();
+    c.save(); c.translate(centerX - 10.5, centerY - 10.5); c.scale(.21, .21);
+    c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff';
+    c.fill(new Path2D('M37 84 24 68C12 51 17 31 34 21c17-10 38-6 49 7l6-12 7 42-43-4 13-10C57 35 44 34 35 41c-10 8-8 21-1 29l10 11Z'));
     c.restore();
   }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
@@ -368,8 +366,8 @@
     drawTapIcon(c, 94, 660);
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
     const ruleSegments = ruleParts.length > 1
-      ? [{ text: `: ${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
-      : [{ text: `: ${card.rules}`, weight: 700, size: 20.5 }];
+      ? [{ text: ': ', weight: 400, size: 20.5 }, { text: `${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
+      : [{ text: ': ', weight: 400, size: 20.5 }, { text: card.rules, weight: 700, size: 20.5 }];
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
