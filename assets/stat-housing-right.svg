@@ -9,6 +9,6 @@
     </linearGradient>
   </defs>
   <path d="M18 2h120l11 14v36l-15 10H15L2 47V16Z" fill="url(#shell)" stroke="#020508" stroke-width="4"/>
-  <rect x="7" y="7" width="137" height="50" rx="25" fill="url(#recess)" stroke="#07121a" stroke-width="3"/>
+  <rect x="19" y="7" width="123" height="50" rx="25" fill="url(#recess)" stroke="#07121a" stroke-width="3"/>
   <path d="M17 5h109" stroke="#2d86a7" stroke-width="2"/><path d="M19 59h110" stroke="#a38a6b" stroke-width="1.8"/>
 </svg>
