@@ -313,8 +313,10 @@
     const recess = c.createLinearGradient(x, y + 5, x, y + h - 5);
     recess.addColorStop(0, '#343638'); recess.addColorStop(.45, '#202326'); recess.addColorStop(1, '#111417');
     c.fillStyle = recess; c.strokeStyle = '#07121a'; c.lineWidth = 2.5;
-    roundedRect(c, x + 6, y + 6, w - 12, h - 12, (h - 12) / 2).fill();
-    roundedRect(c, x + 6, y + 6, w - 12, h - 12, (h - 12) / 2).stroke();
+    const recessX = mirrored ? x + 19 : x + 13;
+    const recessW = mirrored ? w - 28 : w - 17;
+    roundedRect(c, recessX, y + 6, recessW, h - 12, (h - 12) / 2).fill();
+    roundedRect(c, recessX, y + 6, recessW, h - 12, (h - 12) / 2).stroke();
     c.strokeStyle = '#2d86a7'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x + 17, y + 5); c.lineTo(x + w - 25, y + 5); c.stroke();
     c.strokeStyle = '#a38a6b'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + 19, y + h - 5); c.lineTo(x + w - 22, y + h - 5); c.stroke();
     c.restore();
