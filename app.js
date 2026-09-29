@@ -201,17 +201,19 @@
   }
   function drawCycleControl(c, centerX, centerY) {
     c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
-    c.beginPath(); c.arc(centerX, centerY, 19, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(centerX, centerY, 18.5, 0, Math.PI * 2); c.fill();
     c.lineWidth = 4;
     [[0,-26,0,-18],[0,18,0,26],[-26,0,-18,0],[18,0,26,0]].forEach(([x1,y1,x2,y2]) => {
       c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
     });
     c.lineCap = 'round'; c.lineWidth = 7.5;
-    c.beginPath(); c.arc(centerX, centerY, 18.5, Math.PI + .30, Math.PI * 2 - .30); c.stroke();
-    c.beginPath(); c.arc(centerX, centerY, 18.5, .30, Math.PI - .30); c.stroke();
+    // Each arc stops before the opposing arrowhead, leaving the reference's
+    // narrow white break while remaining joined to its own arrowhead.
+    c.beginPath(); c.arc(centerX, centerY, 18, Math.PI + .28, Math.PI * 2 - .62); c.stroke();
+    c.beginPath(); c.arc(centerX, centerY, 18, .28, Math.PI - .62); c.stroke();
     c.fillStyle = '#050505';
-    c.beginPath(); c.moveTo(centerX + 20.5, centerY - 13.5); c.lineTo(centerX + 27, centerY + 6); c.lineTo(centerX + 8.5, centerY + 5); c.closePath(); c.fill();
-    c.beginPath(); c.moveTo(centerX - 20.5, centerY + 13.5); c.lineTo(centerX - 27, centerY - 6); c.lineTo(centerX - 8.5, centerY - 5); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX + 20, centerY - 14); c.lineTo(centerX + 24.5, centerY + 5); c.lineTo(centerX + 10, centerY + 4); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(centerX - 20, centerY + 14); c.lineTo(centerX - 24.5, centerY - 5); c.lineTo(centerX - 10, centerY - 4); c.closePath(); c.fill();
     c.restore();
   }
   function drawSpeedGauge(c, speed, x, y, w, h) {
@@ -330,8 +332,8 @@
     const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
     c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextOpticallyCentered(c, title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
     if (card.cycle !== '') {
-      drawCycleControl(c, 572, 91.5);
-      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 572, 91.5);
+      drawCycleControl(c, 568.5, 91.5);
+      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 568.5, 91.5);
     }
 
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
