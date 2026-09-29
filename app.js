@@ -321,7 +321,7 @@
     c.textBaseline = 'middle'; c.textAlign = 'center';
     if (layerImages.construction) c.drawImage(layerImages.construction, 72, 69, 44, 44);
     else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 91, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 94, 91);
+    c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 95, 93);
     if (layerImages.operation) c.drawImage(layerImages.operation, 121, 73, 37, 37);
     else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 91.5, 18.5, 0, Math.PI * 2); c.fill(); }
     c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 91.5);
@@ -335,8 +335,10 @@
     }
 
     const assets = [['L','#167ee6'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#24b769']].filter(([key]) => card[`asset${key}`] !== '');
-    const firstRowLeft = assets.length ? 175 : 60;
-    const secondRowLeft = assets.length > 1 ? 175 : 60;
+    // Leave a narrow black reveal between the white Asset rail and header boxes.
+    // This keeps their centered strokes visually separate instead of touching.
+    const firstRowLeft = assets.length ? 185 : 60;
+    const secondRowLeft = assets.length > 1 ? 185 : 60;
 
     // Rebuild the complete variable header on top of the fixed frame so no legacy
     // two-cost geometry can leak through at 0, 1, or 3–5 Asset Costs.
