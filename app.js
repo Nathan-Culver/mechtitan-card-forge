@@ -254,8 +254,10 @@
   function drawTapIcon(c, centerX, centerY) {
     c.save(); c.translate(centerX - 10.5, centerY - 10.5); c.scale(.21, .21);
     c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
+    c.save(); c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.clip();
     c.fillStyle = '#fff';
-    c.fill(new Path2D('M37 84 24 68C12 51 17 31 34 21c17-10 38-6 49 7l6-12 7 42-43-4 13-10C57 35 44 34 35 41c-10 8-8 21-1 29l10 11Z'));
+    c.fill(new Path2D('M37 84 47 74C31 56 30 38 40 28c8-8 20-8 28 5l8-12 4 33H46l12-10c-7-6-14-7-20-2-9 8-5 22 5 32Z'));
+    c.restore();
     c.restore();
   }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
@@ -394,8 +396,8 @@
     drawTapIcon(c, 94, 660);
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
     const ruleSegments = ruleParts.length > 1
-      ? [{ text: ': ', weight: 400, size: 20.5 }, { text: `${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
-      : [{ text: ': ', weight: 400, size: 20.5 }, { text: card.rules, weight: 700, size: 20.5 }];
+      ? [{ text: ': ', weight: 600, size: 20.5 }, { text: `${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
+      : [{ text: ': ', weight: 600, size: 20.5 }, { text: card.rules, weight: 700, size: 20.5 }];
     let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
     if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
 
