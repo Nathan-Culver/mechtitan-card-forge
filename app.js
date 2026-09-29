@@ -326,7 +326,7 @@
     c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
     c.save(); c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.clip();
     c.fillStyle = '#fff';
-    c.fill(new Path2D('M34 86 49 72C35 57 31 43 40 34c7-7 18-6 28 2l8-15 4 33H46l12-10c-7-6-14-7-20-2-9 8-4 22 11 31Z'));
+    c.fill(new Path2D('M37 86 51 72C22 52 18 31 38 20c11-6 24-2 32 9l6-8 4 33H46l13-10c-6-5-12-6-17-1-8 8-3 20 9 29Z'));
     c.restore();
     c.restore();
   }
