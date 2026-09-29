@@ -449,15 +449,15 @@
 
     assets.forEach(([key, color], i) => {
       const y = 120 + i * 36;
-      const assetFill = c.createLinearGradient(68, y, 126, y + 29);
+      const assetFill = c.createLinearGradient(70, y, 124, y + 29);
       assetFill.addColorStop(0, '#e9e5d9'); assetFill.addColorStop(.42, '#d2d3cd'); assetFill.addColorStop(.72, '#e2dfd3'); assetFill.addColorStop(1, '#aeb3ae');
-      c.fillStyle = assetFill; roundedRect(c, 68, y, 58, 29, 14).fill();
-      strokeEmbossedRoundedRect(c, 68, y, 58, 29, 14, 2.7);
-      const colorTexture = c.createLinearGradient(99, y + 2, 124, y + 27);
+      c.fillStyle = assetFill; roundedRect(c, 70, y, 54, 29, 14).fill();
+      strokeEmbossedRoundedRect(c, 70, y, 54, 29, 14, 2.5);
+      const colorTexture = c.createLinearGradient(98, y + 3, 121, y + 26);
       colorTexture.addColorStop(0, '#d5c9ad'); colorTexture.addColorStop(.1, color); colorTexture.addColorStop(.58, color); colorTexture.addColorStop(1, '#252728');
-      c.fillStyle = colorTexture; roundedRect(c, 99, y + 2, 25, 25, 9).fill();
-      c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 83, y + 15);
-      c.fillStyle = '#fff'; c.font = '900 23px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 111.5, y + 15);
+      c.fillStyle = colorTexture; roundedRect(c, 98, y + 3, 23, 23, 8).fill();
+      c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 84, y + 15);
+      c.fillStyle = '#fff'; c.font = '900 22px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 109.5, y + 15);
     });
 
     const rarityCount = { Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] || 4;
