@@ -230,8 +230,7 @@
     c.lineWidth = width * .9; c.strokeStyle = rim; roundedRect(c, x, y, w, h, r).stroke();
     c.lineWidth = .65; c.strokeStyle = 'rgba(220,207,174,.26)'; c.setLineDash([3, 1.4, .8, 1.8]);
     c.beginPath(); c.moveTo(x + r, y + 2); c.lineTo(x + w - r, y + 2); c.stroke();
-    c.setLineDash([]); c.strokeStyle = 'rgba(0,0,0,.5)';
-    c.beginPath(); c.moveTo(x + r, y + h - 2); c.lineTo(x + w - r, y + h - 2); c.stroke();
+    c.setLineDash([]);
     c.restore();
   }
   function fillTexturedEllipse(c, cx, cy, rx, ry, colors, seed = 0) {
@@ -255,10 +254,6 @@
   function drawCycleControl(c, centerX, centerY) {
     c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
     c.beginPath(); c.arc(centerX, centerY, 18.5, 0, Math.PI * 2); c.fill();
-    c.lineWidth = 4;
-    [[0,-26,0,-18],[0,18,0,26],[-26,0,-18,0],[18,0,26,0]].forEach(([x1,y1,x2,y2]) => {
-      c.beginPath(); c.moveTo(centerX+x1, centerY+y1); c.lineTo(centerX+x2, centerY+y2); c.stroke();
-    });
     c.lineCap = 'round'; c.lineWidth = 7.5;
     // Each arc stops before the opposing arrowhead, leaving the reference's
     // narrow white break while remaining joined to its own arrowhead.
@@ -275,8 +270,10 @@
   }
   function drawSpeedGauge(c, speed, x, y, w, h) {
     const marker = { XS: 27, S: 44, M: 62, F: 80, XF: 98 }[speed] || 62;
-    const markerX = x + marker * w / 125;
-    const cx = x + 62 * w / 125, cy = y + h / 2, rx = 56 * w / 125, ry = 45 * h / 100;
+    // x/y/w/h describe the visible oval itself. This keeps Speed identical in
+    // size and shape to Attack instead of inheriting the SVG's outer padding.
+    const markerX = x + (marker - 6) * w / 112;
+    const cx = x + w / 2, cy = y + h / 2, rx = w / 2, ry = h / 2;
     c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
     const fastSide = c.createLinearGradient(x, y, x + w, y + h);
     fastSide.addColorStop(0, '#e9cf79'); fastSide.addColorStop(.35, '#d8b84e'); fastSide.addColorStop(.72, '#efd277'); fastSide.addColorStop(1, '#9e7625');
@@ -326,6 +323,7 @@
     c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
     c.save(); c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.clip();
     c.fillStyle = '#fff';
+    c.translate(0, 6);
     c.fill(new Path2D('M37 86 51 72C22 52 18 31 38 20c11-6 24-2 32 9l6-8 4 33H46l13-10c-6-5-12-6-17-1-8 8-3 20 9 29Z'));
     c.restore();
     c.restore();
@@ -490,17 +488,22 @@
     else drawStatHousing(c, 58, 776, 149, 64, false);
     if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, 453, 776, 151, 64);
     else drawStatHousing(c, 453, 776, 151, 64, true);
-    drawSpeedGauge(c, card.speed, 68, 783, 68, 50);
-    fillTexturedEllipse(c, 168, 808, 32.5, 24.5, ['#cf4a4d', '#b70b15', '#7e090e', '#c82a2f', '#52080b'], 7);
-    strokeEmbossedEllipse(c, 168, 808, 32.5, 24.5, 3.2);
-    fillTexturedEllipse(c, 498, 808, 24.5, 24.5, ['#deddd4', '#b4bbb9', '#737b7c', '#c9cbc4', '#686f70'], 13);
-    strokeEmbossedEllipse(c, 498, 808, 24.5, 24.5, 3.1);
-    fillTexturedEllipse(c, 559, 808, 31.5, 23.5, ['#454b4d', '#252827', '#0d0f0f', '#343938', '#151817'], 19);
-    strokeEmbossedEllipse(c, 559, 808, 31.5, 23.5, 2.7);
-    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, 103, 808);
-    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, 168, 808);
-    c.fillStyle = '#050505'; fillTextOpticallyCentered(c, card.armor, 498, 808);
-    c.fillStyle = '#fff'; fillTextOpticallyCentered(c, card.structure, 559, 808);
+    // Equal 65 x 49 Speed/Attack ovals form a 133 px group centered at 132.5,
+    // the exact horizontal center of the 149 px left housing.
+    const speedCenterX = 98.5, attackCenterX = 166.5;
+    drawSpeedGauge(c, card.speed, speedCenterX - 32.5, 783.5, 65, 49);
+    fillTexturedEllipse(c, attackCenterX, 808, 32.5, 24.5, ['#cf4a4d', '#b70b15', '#7e090e', '#c82a2f', '#52080b'], 7);
+    strokeEmbossedEllipse(c, attackCenterX, 808, 32.5, 24.5, 3.2);
+
+    // Center the original Armor/Structure footprint in the right housing,
+    // then leave Structure as a clean value on the shared recessed background.
+    const armorCenterX = 494.5, structureCenterX = 555.5;
+    fillTexturedEllipse(c, armorCenterX, 808, 24.5, 24.5, ['#deddd4', '#b4bbb9', '#737b7c', '#c9cbc4', '#686f70'], 13);
+    strokeEmbossedEllipse(c, armorCenterX, 808, 24.5, 24.5, 3.1);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextOpticallyCentered(c, card.speed, speedCenterX, 808);
+    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.attack, attackCenterX, 808);
+    c.fillStyle = '#050505'; fillTextOpticallyCentered(c, card.armor, armorCenterX, 808);
+    c.fillStyle = '#fff'; fillTextOpticallyCentered(c, card.structure, structureCenterX, 808);
     c.fillStyle = '#050505'; c.font = '600 16px "Arial Narrow", Arial'; fillTextOpticallyCentered(c, card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 806);
     c.font = '500 11.5px Arial'; fillTextOpticallyCentered(c, card.copyright || `${card.setCode} • ${card.collector}`, 330, 821);
 
