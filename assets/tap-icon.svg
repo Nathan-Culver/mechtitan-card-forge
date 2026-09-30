@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-label="Tap symbol">
   <circle cx="50" cy="50" r="49" fill="#231f20"/>
-  <path d="M37 86 51 72C22 52 18 31 38 20c11-6 24-2 32 9l6-8 4 33H46l13-10c-6-5-12-6-17-1-8 8-3 20 9 29Z" fill="#fff"/>
+  <path d="M37 86 51 72C22 52 18 31 38 20c11-6 24-2 32 9l6-8 4 33H46l13-10c-6-5-12-6-17-1-8 8-3 20 9 29Z" fill="#fff" transform="translate(0 6)"/>
 </svg>
