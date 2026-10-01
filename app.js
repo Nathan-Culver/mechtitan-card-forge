@@ -24,17 +24,16 @@
     attackOnlyHousing: 'assets/stat-housing-attack-only.svg?v=10', structureOnlyHousing: 'assets/stat-housing-structure-only.svg?v=10',
     statTextureWhite: 'assets/stat-texture-white.png', statTexturePalette: 'assets/stat-texture-palette.png'
   };
-  const REFERENCE_ART = 'assets/naga-d-sample-art.png';
   let history = [];
   let historyIndex = -1;
   let historyTimer = null;
   let toastTimer = null;
 
   const defaults = {
-    name: 'UNTITLED UNIT', construction: 0, operation: 0, assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
-    loadout: 'Tonnage • Weapons • Systems', traits: 'Mech • Faction • Role', rules: 'Add rules text.', flavor: '', speed: 'M',
-    attack: 0, armor: 0, structure: 1, cycle: '', rarity: 'Common', faction: '', artist: '', copyright: '© 2026 MechTitan TCG', setCode: 'CORE', collector: '001/001',
-    theme: 'titanium', titleSize: 100, uppercaseTitle: true, showTags: true, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
+    name: '', construction: '-', operation: '-', assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
+    loadout: '', traits: '', rules: '', flavor: '', speed: '-',
+    attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
+    theme: 'titanium', titleSize: 100, uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
   function preloadLayers() {
@@ -132,6 +131,24 @@
     return card;
   }
 
+  function clearCurrentCard() {
+    const current = cards.find(card => card.id === currentId);
+    const label = current?.name || getFormData().name || 'this card';
+    if (!window.confirm(`Clear ${label}? This replaces its saved contents in this browser with a blank card.`)) return;
+
+    currentId ||= uid();
+    history = [];
+    historyIndex = -1;
+    const blank = normalizeCard({ ...defaults, id: currentId });
+    const index = cards.findIndex(card => card.id === currentId);
+    if (index >= 0) cards[index] = blank; else cards.unshift(blank);
+    selected.delete(currentId);
+    persist();
+    setFormData(blank);
+    updateUndoButtons();
+    toast('Saved card cleared');
+  }
+
   function loadStore() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -141,16 +158,8 @@
         return cards.find(c => c.id === currentId);
       }
     } catch (_) { /* use prototype */ }
-    const prototype = normalizeCard({
-      ...defaults, id: uid(), name: 'NAGA D', construction: 8, operation: 2, assetL: 3, assetU: 3,
-      loadout: '80 tons • Med Laser • 4 SRMs • 2 Arrow IVs', traits: 'Mech • Artillery • Omni • Clan • Wolf',
-      rules: 'Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.',
-      flavor: "Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.",
-      speed: 'M', attack: 7, armor: 2, structure: 5, cycle: 2, rarity: 'Common', faction: 'Clan Wolf',
-      artist: 'Randy Asplund-Faith', copyright: '©1997 Wizards of the Coast, Inc.', collector: '001/180',
-      artData: REFERENCE_ART
-    });
-    cards = [prototype]; currentId = prototype.id; persist(); return prototype;
+    const blank = normalizeCard({ ...defaults, id: uid() });
+    cards = [blank]; currentId = blank.id; persist(); return blank;
   }
 
   function pushHistory() {
@@ -1075,6 +1084,7 @@
   });
   document.querySelector('#clearArtBtn').addEventListener('click', () => { form.dataset.artData = ''; artImage = null; render(); pushHistory(); });
   document.querySelector('#saveBtn').addEventListener('click', () => saveCurrent());
+  document.querySelector('#clearCardBtn').addEventListener('click', clearCurrentCard);
   document.querySelector('#exportImageBtn').addEventListener('click', () => exportCard());
   document.querySelector('#exportProjectBtn').addEventListener('click', exportProject);
   document.querySelector('#importProjectBtn').addEventListener('click', () => document.querySelector('#projectFile').click());
