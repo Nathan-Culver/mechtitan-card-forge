@@ -33,6 +33,16 @@
         <span id="saveStatus" class="save-status">Saved locally</span>
       </div>
 
+      <div class="mobile-preview-control">
+        <label class="mobile-preview-toggle" for="stickyPreview">
+          <input id="stickyPreview" type="checkbox" aria-controls="mobilePreviewDock">
+          <span>Sticky live preview</span>
+        </label>
+        <div id="mobilePreviewDock" class="mobile-preview-dock" role="region" aria-label="Sticky live card preview" aria-hidden="true">
+          <canvas id="mobileCardCanvas" width="660" height="900" aria-label="Compact rendered MechTitan card preview"></canvas>
+        </div>
+      </div>
+
       <div class="tabs" role="tablist" aria-label="Editor sections">
         <button class="tab active" role="tab" aria-selected="true" data-tab="content">Content</button>
         <button class="tab" role="tab" aria-selected="false" data-tab="art">Art</button>
@@ -60,6 +70,7 @@
           <div class="field full"><label for="loadout">Tags</label><input id="loadout" name="loadout" maxlength="70"></div>
           <div class="field full"><label for="traits">Types / Subtypes</label><input id="traits" name="traits" maxlength="80"></div>
           <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox"><span>Show Tags box</span></label>
+          <div class="field full"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None" selected>None (0 bolts)</option></select></div>
           <div class="field full"><label for="rules">Rules text · Markdown · {T} Tap · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
           <div class="field full"><label for="flavor">Flavor text · Markdown</label><textarea id="flavor" name="flavor" rows="3"></textarea></div>
           <div class="grid-3">
@@ -67,10 +78,7 @@
             <div class="field"><label for="attack">Attack</label><input id="attack" name="attack" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" value="-"></div>
             <div class="field"><label for="armor">Armor</label><input id="armor" name="armor" type="text" inputmode="numeric" pattern="-|[0-5]" value="-"></div>
           </div>
-          <div class="grid-2">
-            <div class="field"><label for="structure">Structure</label><input id="structure" name="structure" type="text" inputmode="numeric" pattern="-|[1-9]|[12][0-9]|30" value="-"></div>
-            <div class="field"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None" selected>None (0 bolts)</option></select></div>
-          </div>
+          <div class="field full"><label for="structure">Structure</label><input id="structure" name="structure" type="text" inputmode="numeric" pattern="-|[1-9]|[12][0-9]|30" value="-"></div>
           <div class="grid-2">
             <div class="field"><label for="faction">Faction</label><input id="faction" name="faction" value="Clan Wolf"></div>
             <div class="field"><label for="artist">Artist credit</label><input id="artist" name="artist" placeholder="Artist name"></div>

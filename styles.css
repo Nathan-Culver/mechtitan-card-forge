@@ -39,6 +39,7 @@ button.danger { color: #ffb7c2; border-color: #5c2c38; }
 .library-panel { border-left: 1px solid var(--line); padding: 1.15rem; overflow-y: auto; max-height: calc(100vh - 72px); }
 .panel-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
 .panel-heading.compact { align-items: center; }
+.mobile-preview-control { display: none; }
 h1, h2, h3 { margin: 0; text-transform: uppercase; letter-spacing: .04em; }
 h1, h2 { font-size: 1.25rem; }
 h3 { font-size: .86rem; }
@@ -63,7 +64,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
 .asset { display: flex; align-items: stretch; border: 1px solid var(--line); background: var(--input); }
 .asset b { width: 28px; display: grid; place-items: center; color: #071018; }
 .asset input { min-width: 0; border: 0; padding-inline: .25rem; text-align: center; }
-.asset-l b { background: #277fc0; } .asset-p b { background: #bc78e8; } .asset-s b { background: #f3cc45; } .asset-t b { background: #ff7fb2; } .asset-u b { background: #2c985c; }
+.asset-l b { background: #277fc0; } .asset-p b { background: #bc78e8; } .asset-s b { color: #fff; background: #8a6500; } .asset-t b { color: #fff; background: #8b1e2d; } .asset-u b { background: #2c985c; }
 .upload-zone { border: 1px dashed var(--line-bright); padding: 2.1rem 1.2rem; text-align: center; margin-bottom: 1.2rem; background: #09121a; }
 .upload-zone p, .hint, .bulk-box p { color: var(--muted); font-size: .78rem; line-height: 1.45; }
 .toggle-row { display: flex; gap: .65rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid var(--line); font-size: .86rem; }
@@ -117,11 +118,19 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
   .top-actions button { min-height: 44px; padding: .58rem .45rem; font-size: .75rem; white-space: nowrap; }
   .top-actions .icon-btn { display: none; }
   .workspace { display: flex; flex-direction: column; }
-  .editor-panel, .library-panel { max-height: none; border: 0; padding: 1rem; }
+  .editor-panel, .library-panel { max-height: none; overflow: visible; border: 0; padding: 1rem; }
   .editor-panel { order: 1; }
   .stage { order: 2; padding: 1rem; border-block: 1px solid var(--line); }
   .library-panel { order: 3; }
-  .tabs { position: sticky; top: 0; z-index: 4; background: var(--panel); }
+  .mobile-preview-control { display: block; margin: 0 0 .8rem; background: var(--panel); }
+  .mobile-preview-toggle { min-height: 44px; display: flex; align-items: center; gap: .65rem; padding: .65rem .75rem; border: 1px solid var(--line); color: #bdcad5; font-size: .82rem; font-weight: 750; }
+  .mobile-preview-toggle input { width: auto; min-height: 0; margin: 0; }
+  .mobile-preview-dock { display: none; place-items: center; min-height: 0; padding: .5rem; border: 1px solid var(--line); border-top: 0; background: #071019f5; }
+  .mobile-preview-dock canvas { display: block; width: auto; max-width: 100%; height: auto; max-height: calc(42vh - 58px); max-height: calc(42svh - 58px); box-shadow: 0 10px 30px #000b; }
+  .mobile-preview-enabled .topbar { position: relative; }
+  .mobile-preview-enabled .mobile-preview-control { position: sticky; top: 0; z-index: 18; max-height: 42vh; max-height: 42svh; margin-inline: -1rem; padding-inline: 1rem; box-shadow: 0 10px 24px #000b; }
+  .mobile-preview-enabled .mobile-preview-dock { display: grid; }
+  .tabs { position: relative; background: var(--panel); }
   .tab { min-height: 44px; }
   .card-wrap { min-height: auto; padding: 1rem 0; overflow: hidden; }
   #cardCanvas { width: min(100%, 506px); max-width: 100%; height: auto; max-height: none; }
@@ -134,6 +143,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
   .library-panel { display: block; }
   .library-panel .bulk-box { border-left: 0; border-top: 1px solid var(--line); padding-left: 0; margin-top: 1rem; }
   input, select, textarea, button { min-height: 44px; }
+  #rules { height: 12rem; min-height: 12rem; }
   input[type="range"], input[type="checkbox"] { min-height: 0; }
   .toast { left: .75rem; right: .75rem; bottom: .75rem; text-align: center; }
 }

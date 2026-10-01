@@ -6,6 +6,9 @@
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
+  const mobileCanvas = document.querySelector('#mobileCardCanvas');
+  const mobileCtx = mobileCanvas.getContext('2d');
+  const stickyPreview = document.querySelector('#stickyPreview');
   const cardList = document.querySelector('#cardList');
   const saveStatus = document.querySelector('#saveStatus');
   const selected = new Set();
@@ -595,7 +598,7 @@
     };
     drawHeaderIdentity();
 
-    const assets = [['L','#0b5fae'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#117d45']].filter(([key]) => card[`asset${key}`] !== '');
+    const assets = [['L','#0b5fae'],['P','#9c4dcc'],['S','#8a6500'],['T','#8b1e2d'],['U','#117d45']].filter(([key]) => card[`asset${key}`] !== '');
     // The Asset rail and header boxes share one edge so the white header reads
     // as a single continuous card component.
     const assetRailLeft = 60;
@@ -946,7 +949,22 @@
     c.restore();
   }
 
-  function render() { drawCard(ctx, getFormData(), 1, document.querySelector('#showBleed').checked); }
+  function syncMobilePreview() {
+    mobileCtx.clearRect(0, 0, W, H);
+    mobileCtx.drawImage(canvas, 0, 0, W, H);
+  }
+
+  function setStickyPreview(enabled) {
+    document.body.classList.toggle('mobile-preview-enabled', enabled);
+    document.querySelector('#mobilePreviewDock').setAttribute('aria-hidden', String(!enabled));
+    localStorage.setItem('mechtitan-sticky-preview', enabled ? '1' : '0');
+    if (enabled) syncMobilePreview();
+  }
+
+  function render() {
+    drawCard(ctx, getFormData(), 1, document.querySelector('#showBleed').checked);
+    syncMobilePreview();
+  }
 
   function renderLibrary() {
     const query = document.querySelector('#searchCards').value.toLowerCase();
@@ -1071,6 +1089,7 @@
     clearTimeout(historyTimer); historyTimer = setTimeout(pushHistory, 350);
   });
   document.querySelector('#showBleed').addEventListener('change', render);
+  stickyPreview.addEventListener('change', () => setStickyPreview(stickyPreview.checked));
   document.querySelector('#zoom').addEventListener('input', updateOutputs);
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => { x.classList.toggle('active', x === tab); x.setAttribute('aria-selected', x === tab); });
@@ -1138,6 +1157,8 @@
     tools.forEach(tool => { try { Promise.resolve(context.registerTool(tool)).catch(() => {}); } catch (_) {} });
   }
 
+  stickyPreview.checked = localStorage.getItem('mechtitan-sticky-preview') === '1';
+  setStickyPreview(stickyPreview.checked);
   preloadLayers();
   const initial = loadStore(); setFormData(initial); updateUndoButtons(); registerWebMcp();
 })();
