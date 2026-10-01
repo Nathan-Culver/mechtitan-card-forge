@@ -83,7 +83,7 @@
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
       uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
       showTags: merged.showTags !== false && String(merged.showTags).toLowerCase() !== 'false',
-      showTypes: merged.showTypes !== false && String(merged.showTypes).toLowerCase() !== 'false',
+      showTypes: true,
       artScale: clamp(merged.artScale, 100, 220, 100), artX: clamp(merged.artX, -100, 100, 0), artY: clamp(merged.artY, -100, 100, 0)
     };
   }
@@ -93,7 +93,7 @@
     const obj = Object.fromEntries(fd.entries());
     obj.uppercaseTitle = document.querySelector('#uppercaseTitle').checked;
     obj.showTags = document.querySelector('#showTags').checked;
-    obj.showTypes = document.querySelector('#showTypes').checked;
+    obj.showTypes = true;
     obj.artData = form.dataset.artData || '';
     return normalizeCard({ ...obj, id: currentId || uid() });
   }

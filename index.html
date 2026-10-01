@@ -41,12 +41,13 @@
       <form id="cardForm" autocomplete="off">
         <section class="tab-page active" data-page="content">
           <div class="field full"><label for="name">Card name</label><input id="name" name="name" maxlength="34" value="NAGA D"></div>
-          <div class="grid-2">
-            <div class="field"><label for="construction">Construction <span>- or 0–20</span></label><input id="construction" name="construction" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" maxlength="2" value="8"></div>
-            <div class="field"><label for="operation">Operation <span>- or 0–4</span></label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-4]" maxlength="1" value="2"></div>
+          <div class="grid-3">
+            <div class="field"><label for="construction">Construction</label><input id="construction" name="construction" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" maxlength="2" value="8"></div>
+            <div class="field"><label for="operation">Operation</label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-4]" maxlength="1" value="2"></div>
+            <div class="field"><label for="cycle">Cycle</label><input id="cycle" name="cycle" type="text" inputmode="numeric" pattern="-|[0-3]" maxlength="1" value="2"></div>
           </div>
           <fieldset class="asset-fieldset">
-            <legend>Asset costs <span>blank or 1–4</span></legend>
+            <legend>Asset costs</legend>
             <div class="asset-grid">
               <label class="asset asset-l"><b>L</b><input name="assetL" type="number" min="1" max="4" placeholder="—" value="3"></label>
               <label class="asset asset-p"><b>P</b><input name="assetP" type="number" min="1" max="4" placeholder="—"></label>
@@ -57,20 +58,16 @@
           </fieldset>
           <div class="field full"><label for="loadout">Tags</label><input id="loadout" name="loadout" maxlength="70" value="80 tons • Med Laser • 4 SRMs • 2 Arrow IVs"></div>
           <div class="field full"><label for="traits">Types / Subtypes</label><input id="traits" name="traits" maxlength="80" value="Mech • Artillery • Omni • Clan • Wolf"></div>
-          <div class="grid-2">
-            <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox" checked><span>Show Tags box</span></label>
-            <label class="toggle-row"><input id="showTypes" name="showTypes" type="checkbox" checked><span>Show Types / Subtypes box</span></label>
-          </div>
+          <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox" checked><span>Show Tags box</span></label>
           <div class="field full"><label for="rules">Rules text · Markdown · {T} Tap · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4">Artillery Fire 2 — Deal 2 damage to a unit or the target. Use this ability only during a mission.</textarea></div>
           <div class="field full"><label for="flavor">Flavor text · Markdown</label><textarea id="flavor" name="flavor" rows="3">Its primary use as an artillery platform limits the variety of other weaponry this 'Mech can carry.</textarea></div>
           <div class="grid-3">
             <div class="field"><label for="speed">Speed</label><select id="speed" name="speed"><option value="-">-</option><option>XS</option><option>S</option><option selected>M</option><option>F</option><option>XF</option></select></div>
-            <div class="field"><label for="attack">Attack <span>- or 0–20</span></label><input id="attack" name="attack" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" value="7"></div>
-            <div class="field"><label for="armor">Armor <span>- or 0–5</span></label><input id="armor" name="armor" type="text" inputmode="numeric" pattern="-|[0-5]" value="2"></div>
+            <div class="field"><label for="attack">Attack</label><input id="attack" name="attack" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" value="7"></div>
+            <div class="field"><label for="armor">Armor</label><input id="armor" name="armor" type="text" inputmode="numeric" pattern="-|[0-5]" value="2"></div>
           </div>
-          <div class="grid-3">
-            <div class="field"><label for="structure">Structure <span>- or 1–30</span></label><input id="structure" name="structure" type="text" inputmode="numeric" pattern="-|[1-9]|[12][0-9]|30" value="5"></div>
-            <div class="field"><label for="cycle">Cycle <span>- or 0–3</span></label><input id="cycle" name="cycle" type="text" inputmode="numeric" pattern="-|[0-3]" maxlength="1" value="2"></div>
+          <div class="grid-2">
+            <div class="field"><label for="structure">Structure</label><input id="structure" name="structure" type="text" inputmode="numeric" pattern="-|[1-9]|[12][0-9]|30" value="5"></div>
             <div class="field"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option selected>Uncommon</option><option>Rare</option><option>Unique</option><option value="None">None (0 bolts)</option></select></div>
           </div>
           <div class="grid-2">
