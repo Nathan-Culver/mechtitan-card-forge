@@ -20,7 +20,9 @@
     header0: 'assets/header-assets-0.svg', header1: 'assets/header-assets-1.svg', header2: 'assets/header-assets-2.svg',
     header3: 'assets/header-assets-3.svg', header4: 'assets/header-assets-4.svg', header5: 'assets/header-assets-5.svg',
     attackPill: 'assets/attack-pill.svg', defensePill: 'assets/defense-pill.svg', activation: 'assets/tap-icon.svg',
-    leftStatHousing: 'assets/stat-housing-left.svg', rightStatHousing: 'assets/stat-housing-right.svg'
+    leftStatHousing: 'assets/stat-housing-left.svg', rightStatHousing: 'assets/stat-housing-right.svg',
+    attackOnlyHousing: 'assets/stat-housing-attack-only.svg?v=10', structureOnlyHousing: 'assets/stat-housing-structure-only.svg?v=10',
+    statTextureWhite: 'assets/stat-texture-white.png', statTexturePalette: 'assets/stat-texture-palette.png'
   };
   const REFERENCE_ART = 'assets/naga-d-sample-art.png';
   let history = [];
@@ -32,7 +34,7 @@
     name: 'UNTITLED UNIT', construction: 0, operation: 0, assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
     loadout: 'Tonnage • Weapons • Systems', traits: 'Mech • Faction • Role', rules: 'Add rules text.', flavor: '', speed: 'M',
     attack: 0, armor: 0, structure: 1, cycle: '', rarity: 'Common', faction: '', artist: '', copyright: '© 2026 MechTitan TCG', setCode: 'CORE', collector: '001/001',
-    theme: 'titanium', titleSize: 100, uppercaseTitle: true, artData: '', artScale: 100, artX: 0, artY: 0
+    theme: 'titanium', titleSize: 100, uppercaseTitle: true, showTags: true, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
   function preloadLayers() {
@@ -54,6 +56,9 @@
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
   }
   function assetValue(value) { return value === '' || value == null ? '' : clamp(value, 1, 4, 1); }
+  function removableStat(value, min, max, fallback) {
+    return String(value ?? '').trim() === '-' ? '-' : clamp(value, min, max, fallback);
+  }
   function toast(message) {
     const el = document.querySelector('#toast');
     el.textContent = message;
@@ -69,14 +74,16 @@
       ...merged,
       id: /^[a-z0-9_-]+$/i.test(String(raw.id || '')) ? String(raw.id) : uid(),
       name: String(merged.name || defaults.name).slice(0, 34),
-      construction: clamp(merged.construction, 0, 20, 0), operation: clamp(merged.operation, 0, 4, 0),
+      construction: removableStat(merged.construction, 0, 20, 0), operation: removableStat(merged.operation, 0, 4, 0),
       assetL: assetValue(merged.assetL), assetP: assetValue(merged.assetP), assetS: assetValue(merged.assetS), assetT: assetValue(merged.assetT), assetU: assetValue(merged.assetU),
-      speed: ['XS','S','M','F','XF'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
-      attack: clamp(merged.attack, 0, 20, 0), armor: clamp(merged.armor, 0, 5, 0), structure: clamp(merged.structure, 1, 30, 1),
-      cycle: merged.cycle === '' || merged.cycle == null ? '' : clamp(merged.cycle, 0, 3, 0),
-      rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique'].includes(merged.rarity) ? merged.rarity : 'Common'),
+      speed: ['XS','S','M','F','XF','-'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
+      attack: removableStat(merged.attack, 0, 20, 0), armor: removableStat(merged.armor, 0, 5, 0), structure: removableStat(merged.structure, 1, 30, 1),
+      cycle: merged.cycle === '' || merged.cycle == null ? '' : removableStat(merged.cycle, 0, 3, 0),
+      rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
       uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
+      showTags: merged.showTags !== false && String(merged.showTags).toLowerCase() !== 'false',
+      showTypes: merged.showTypes !== false && String(merged.showTypes).toLowerCase() !== 'false',
       artScale: clamp(merged.artScale, 100, 220, 100), artX: clamp(merged.artX, -100, 100, 0), artY: clamp(merged.artY, -100, 100, 0)
     };
   }
@@ -85,6 +92,8 @@
     const fd = new FormData(form);
     const obj = Object.fromEntries(fd.entries());
     obj.uppercaseTitle = document.querySelector('#uppercaseTitle').checked;
+    obj.showTags = document.querySelector('#showTags').checked;
+    obj.showTypes = document.querySelector('#showTypes').checked;
     obj.artData = form.dataset.artData || '';
     return normalizeCard({ ...obj, id: currentId || uid() });
   }
@@ -260,6 +269,19 @@
     }
     c.globalCompositeOperation = 'source-over'; c.restore();
   }
+  function drawImageTextureEllipse(c, image, source, cx, cy, rx, ry, alpha = 1) {
+    if (!image) return;
+    c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
+    c.globalAlpha = alpha;
+    c.drawImage(image, source.x, source.y, source.w, source.h, cx - rx, cy - ry, rx * 2, ry * 2);
+    c.restore();
+  }
+  function drawImageTextureRoundedRect(c, image, source, x, y, w, h, radius, alpha = 1) {
+    if (!image) return;
+    c.save(); roundedRect(c, x, y, w, h, radius).clip(); c.globalAlpha = alpha;
+    c.drawImage(image, source.x, source.y, source.w, source.h, x, y, w, h);
+    c.restore();
+  }
   function drawCycleControl(c, centerX, centerY) {
     c.save(); c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineCap = 'butt';
     c.beginPath(); c.arc(centerX, centerY, 18.5, 0, Math.PI * 2); c.fill();
@@ -284,18 +306,33 @@
     const markerX = x + (marker - 6) * w / 112;
     const cx = x + w / 2, cy = y + h / 2, rx = w / 2, ry = h / 2;
     c.save(); c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); c.clip();
-    const fastSide = c.createLinearGradient(x, y, x + w, y + h);
-    fastSide.addColorStop(0, '#e9cf79'); fastSide.addColorStop(.35, '#d8b84e'); fastSide.addColorStop(.72, '#efd277'); fastSide.addColorStop(1, '#9e7625');
-    c.fillStyle = fastSide; c.fillRect(x, y, w, h);
-    const slowSide = c.createLinearGradient(x, y, markerX, y + h);
-    slowSide.addColorStop(0, '#e4ad50'); slowSide.addColorStop(.3, '#c86429'); slowSide.addColorStop(.68, '#e18c37'); slowSide.addColorStop(1, '#8e3b1c');
-    c.fillStyle = slowSide; c.fillRect(x, y, markerX - x, h);
+    if (layerImages.statTexturePalette) {
+      // Apply the supplied yellow texture only to the fixed portion of the gauge.
+      c.drawImage(layerImages.statTexturePalette, 4, 423, 913, 423, x, y, w, h);
+      // Lift the dark source swatch without flattening its hand-painted variation.
+      c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(255, 231, 145, .34)'; c.fillRect(x, y, w, h);
+      // Restore the moving Speed segment with its original untextured orange paint.
+      c.globalCompositeOperation = 'source-over';
+      const slowSide = c.createLinearGradient(x, y, markerX, y + h);
+      slowSide.addColorStop(0, '#e4ad50'); slowSide.addColorStop(.3, '#c86429'); slowSide.addColorStop(.68, '#e18c37'); slowSide.addColorStop(1, '#8e3b1c');
+      c.fillStyle = slowSide; c.fillRect(x, y, markerX - x, h);
+      c.globalCompositeOperation = 'source-over';
+    } else {
+      const fastSide = c.createLinearGradient(x, y, x + w, y + h);
+      fastSide.addColorStop(0, '#e9cf79'); fastSide.addColorStop(.35, '#d8b84e'); fastSide.addColorStop(.72, '#efd277'); fastSide.addColorStop(1, '#9e7625');
+      c.fillStyle = fastSide; c.fillRect(x, y, w, h);
+      const slowSide = c.createLinearGradient(x, y, markerX, y + h);
+      slowSide.addColorStop(0, '#e4ad50'); slowSide.addColorStop(.3, '#c86429'); slowSide.addColorStop(.68, '#e18c37'); slowSide.addColorStop(1, '#8e3b1c');
+      c.fillStyle = slowSide; c.fillRect(x, y, markerX - x, h);
+    }
+    c.save(); c.beginPath(); c.rect(markerX, y, x + w - markerX, h); c.clip();
     c.globalCompositeOperation = 'soft-light';
     for (let i = 0; i < 15; i++) {
       c.fillStyle = i % 3 ? 'rgba(236,210,155,.13)' : 'rgba(66,25,0,.18)';
       c.beginPath(); c.ellipse(x + ((i * 29) % 67), y + ((i * 19) % 47), 3.2, 1.35, -.45, 0, Math.PI * 2); c.fill();
     }
     c.globalCompositeOperation = 'source-over';
+    c.restore();
     c.restore();
     c.save(); c.fillStyle = '#050505';
     c.beginPath(); c.moveTo(markerX - 6, y + 3); c.lineTo(markerX + 6, y + 3); c.lineTo(markerX, y + 14); c.closePath(); c.fill();
@@ -327,6 +364,56 @@
     c.strokeStyle = '#a38a6b'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x + 19, y + h - 5); c.lineTo(x + w - 22, y + h - 5); c.stroke();
     c.restore();
   }
+  function drawFramePaperTexture(c, x, y, w, h, sourceY, mirrorY = false, sourceX = x, sourceW = w, sourceH = h) {
+    c.fillStyle = '#f4f3ef'; c.fillRect(x, y, w, h);
+    if (layerImages.frame) {
+      const frameTrim = { x: 30, y: 30, w: 600, h: 840 };
+      const frameScaleX = layerImages.frame.naturalWidth / frameTrim.w;
+      const frameScaleY = layerImages.frame.naturalHeight / frameTrim.h;
+      c.save();
+      if (mirrorY) {
+        c.translate(0, y * 2 + h);
+        c.scale(1, -1);
+      }
+      c.drawImage(
+        layerImages.frame,
+        (sourceX - frameTrim.x) * frameScaleX, (sourceY - frameTrim.y) * frameScaleY,
+        sourceW * frameScaleX, sourceH * frameScaleY,
+        x, y, w, h
+      );
+      c.restore();
+    } else if (layerImages.statTextureWhite) {
+      c.drawImage(layerImages.statTextureWhite, x, y, w, h);
+    }
+  }
+  function clearLegacyStatFooter(c, x, y, w, h) {
+    c.save();
+    // Continue the exact paper used by the main rules box into the rebuilt
+    // footer. Read from the pristine frame asset (not the live canvas, which
+    // already contains flavor text) so the artist strip shares its grain,
+    // brightness, and export scaling with the area directly above it.
+    const paperH = h - 7;
+    const footerCornerBevel = 24;
+    c.save();
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x + w, y);
+    c.lineTo(x + w, y + paperH - footerCornerBevel);
+    c.lineTo(x + w - footerCornerBevel, y + paperH);
+    c.lineTo(x + footerCornerBevel, y + paperH);
+    c.lineTo(x, y + paperH - footerCornerBevel);
+    c.closePath();
+    c.clip();
+    drawFramePaperTexture(c, x, y, w, paperH, y - paperH, true);
+    c.restore();
+    const railY = y + h - 7;
+    const rail = c.createLinearGradient(0, railY, 0, y + h);
+    rail.addColorStop(0, '#02070b'); rail.addColorStop(.3, '#0c4a69'); rail.addColorStop(.65, '#021724'); rail.addColorStop(1, '#000407');
+    c.fillStyle = rail; c.fillRect(x, railY, w, 7);
+    c.strokeStyle = '#020508'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x, railY); c.lineTo(x + w, railY); c.stroke();
+    c.strokeStyle = 'rgba(40, 124, 158, .7)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x, railY + 2.5); c.lineTo(x + w, railY + 2.5); c.stroke();
+    c.restore();
+  }
   function drawTapIcon(c, centerX, centerY) {
     c.save(); c.translate(centerX - 10.5, centerY - 10.5); c.scale(.21, .21);
     c.fillStyle = '#231f20'; c.beginPath(); c.arc(50, 50, 49, 0, Math.PI * 2); c.fill();
@@ -335,6 +422,19 @@
     c.translate(0, 6);
     c.fill(new Path2D('M37 86 51 72C22 52 18 31 38 20c11-6 24-2 32 9l6-8 4 33H46l13-10c-6-5-12-6-17-1-8 8-3 20 9 29Z'));
     c.restore();
+    c.restore();
+  }
+  function drawResourceIcon(c, value, centerX, centerY) {
+    c.save();
+    c.fillStyle = '#f8f8f6';
+    c.strokeStyle = '#050505';
+    c.lineWidth = 2.2;
+    c.beginPath(); c.arc(centerX, centerY, 11.5, 0, Math.PI * 2); c.fill(); c.stroke();
+    strokeEmbossedEllipse(c, centerX, centerY, 11.5, 11.5, 1.5);
+    c.fillStyle = '#050505';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = `900 ${String(value).length > 1 ? 12.075 : 14.7}px "Arial Black", Arial`;
+    fillTextOpticallyCentered(c, String(value), centerX, centerY + .5);
     c.restore();
   }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
@@ -352,24 +452,71 @@
     return lines;
   }
 
-  function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines) {
+  function parseMarkdownSegments(text, base = {}) {
+    const source = String(text || '');
+    const segments = [];
+    const pattern = /(\*\*\*[\s\S]+?\*\*\*|___[\s\S]+?___|\*\*[\s\S]+?\*\*|__[\s\S]+?__|~~[\s\S]+?~~|\*[\s\S]+?\*|_[\s\S]+?_)/g;
+    let cursor = 0;
+    const push = (value, changes = {}) => { if (value) segments.push({ ...base, ...changes, text: value }); };
+    for (const match of source.matchAll(pattern)) {
+      push(source.slice(cursor, match.index));
+      const token = match[0];
+      if ((token.startsWith('***') && token.endsWith('***')) || (token.startsWith('___') && token.endsWith('___'))) {
+        push(token.slice(3, -3), { style: 'italic', weight: Math.max(700, base.weight || 400) });
+      } else if ((token.startsWith('**') && token.endsWith('**')) || (token.startsWith('__') && token.endsWith('__'))) {
+        push(token.slice(2, -2), { weight: Math.max(700, base.weight || 400) });
+      } else if (token.startsWith('~~') && token.endsWith('~~')) {
+        push(token.slice(2, -2), { strike: true });
+      } else {
+        push(token.slice(1, -1), { style: 'italic' });
+      }
+      cursor = match.index + token.length;
+    }
+    push(source.slice(cursor));
+    return segments;
+  }
+
+  function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines, draw = true) {
     let cursorX = x, cursorY = y, lines = 1;
     for (const segment of segments) {
-      const words = String(segment.text || '').split(/(\s+)/).filter(Boolean);
+      // Rules text supports compact inline game symbols: {T}/{t} for Tap and
+      // {0} through {20} for resource costs. Keep each symbol atomic while
+      // wrapping so it behaves like a single printed glyph.
+      const words = String(segment.text || '').split(/(\{(?:[tT]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
       for (const word of words) {
-        c.font = `${segment.style || 'normal'} ${segment.weight || 400} ${segment.size || 18}px Arial, sans-serif`;
-        const width = c.measureText(word).width;
+        if (word === '\n') {
+          lines += 1;
+          if (lines > maxLines) return { cursorY, lines: maxLines };
+          cursorX = x; cursorY += lineHeight;
+          continue;
+        }
+        const tapToken = /^\{[tT]\}$/.test(word);
+        const resourceToken = /^\{(?:[0-9]|1[0-9]|20)\}$/.test(word);
+        const colonToken = word === ':';
+        const fontWeight = colonToken ? 640 : (segment.weight || 400);
+        c.font = `${segment.style || 'normal'} ${fontWeight} ${segment.size || 18}px Arial, sans-serif`;
+        const width = resourceToken ? 26.5 : tapToken ? 23 : c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
           if (lines > maxLines) return cursorY;
           cursorX = x; cursorY += lineHeight;
         }
         if (cursorX === x && /^\s+$/.test(word)) continue;
-        c.fillText(word, cursorX, cursorY);
+        if (draw) {
+          if (tapToken) drawTapIcon(c, cursorX + 10.5, cursorY - 7.5);
+          else if (resourceToken) drawResourceIcon(c, word.slice(1, -1), cursorX + 12.25, cursorY - 7.5);
+          else {
+            c.fillText(word, cursorX, cursorY);
+            if (segment.strike && !/^\s+$/.test(word)) {
+              c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = Math.max(1, (segment.size || 18) / 16);
+              c.beginPath(); c.moveTo(cursorX, cursorY - (segment.size || 18) * .32); c.lineTo(cursorX + width, cursorY - (segment.size || 18) * .32); c.stroke(); c.restore();
+            }
+          }
+        }
         cursorX += width;
       }
     }
-    return cursorY;
+    return { cursorY, lines };
   }
 
   function drawCard(target, card, scale = 1, guides = false) {
@@ -385,12 +532,27 @@
     if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
     else if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
 
-    const art = { x: mx(78), y: my(284), w: mw(900), h: mh(726) };
+    const metadataHidden = !card.showTags && !card.showTypes;
+    const singleMetadataRow = card.showTags !== card.showTypes;
+    const typesOnly = !card.showTags && card.showTypes;
+    const artTopSource = metadataHidden ? 155 : singleMetadataRow ? 219 : 284;
+    const artBottomSource = 1010;
+    const hasAssetCosts = ['L', 'P', 'S', 'T', 'U'].some(key => card[`asset${key}`] !== '');
+    const artLeftSource = hasAssetCosts ? 78 : 42;
+    const artRightSource = 978;
+    const art = {
+      x: mx(artLeftSource),
+      y: my(artTopSource),
+      w: mx(artRightSource) - mx(artLeftSource),
+      h: my(artBottomSource) - my(artTopSource)
+    };
+    let artPlacement = null;
     c.save(); c.beginPath(); c.rect(art.x, art.y, art.w, art.h); c.clip();
     if (artImage) {
       const cover = Math.max(art.w / artImage.width, art.h / artImage.height) * (card.artScale / 100);
       const dw = artImage.width * cover, dh = artImage.height * cover;
-      c.drawImage(artImage, art.x + (art.w - dw) / 2 + card.artX * 1.8, art.y + (art.h - dh) / 2 + card.artY * 1.5, dw, dh);
+      artPlacement = { x: art.x + (art.w - dw) / 2 + card.artX * 1.8, y: art.y + (art.h - dh) / 2 + card.artY * 1.5, w: dw, h: dh };
+      c.drawImage(artImage, artPlacement.x, artPlacement.y, artPlacement.w, artPlacement.h);
     } else {
       const g = c.createLinearGradient(art.x, art.y, art.x + art.w, art.y + art.h); g.addColorStop(0, t.mid); g.addColorStop(.6, '#101820'); g.addColorStop(1, t.dark); c.fillStyle = g; c.fillRect(art.x, art.y, art.w, art.h);
       c.strokeStyle = t.edge + '88'; c.lineWidth = 2;
@@ -399,135 +561,375 @@
     }
     c.restore();
 
-    c.textBaseline = 'middle'; c.textAlign = 'center';
-    if (layerImages.construction) c.drawImage(layerImages.construction, 72, 69, 44, 44);
-    else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 91, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
-    strokeEmbossedEllipse(c, 94, 91, 20, 20, 3.1);
-    c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 95, 93);
-    if (layerImages.operation) c.drawImage(layerImages.operation, 121, 73, 37, 37);
-    else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 91.5, 18.5, 0, Math.PI * 2); c.fill(); }
-    strokeEmbossedEllipse(c, 139.5, 91.5, 18, 18, 2.7);
-    c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 91.5);
+    const drawHeaderIdentity = () => {
+      c.textBaseline = 'middle'; c.textAlign = 'center';
+      if (card.construction !== '-') {
+        if (layerImages.construction) c.drawImage(layerImages.construction, 72, 68, 44, 44);
+        else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 90, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
+        strokeEmbossedEllipse(c, 94, 90, 20, 20, 3.1);
+        c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 94, 92);
+      }
+      if (card.operation !== '-') {
+        if (layerImages.operation) c.drawImage(layerImages.operation, 121, 72, 37, 37);
+        else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 90.5, 18.5, 0, Math.PI * 2); c.fill(); }
+        strokeEmbossedEllipse(c, 139.5, 90.5, 18, 18, 2.7);
+        c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 90.5);
+      }
 
-    const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
-    const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
-    c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextOpticallyCentered(c, title, 347, 91); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
-    if (card.cycle !== '') {
-      drawCycleControl(c, 568.5, 91.5);
-      c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 568.5, 91.5);
-    }
+      const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
+      const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
+      c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextGlyphCentered(c, title, 347, 101.5); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
+      if (card.cycle !== '' && card.cycle !== '-') {
+        drawCycleControl(c, 565.5, 89.5);
+        c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5);
+      }
+    };
+    drawHeaderIdentity();
 
     const assets = [['L','#0b5fae'],['P','#9c4dcc'],['S','#f0bc18'],['T','#f04e9b'],['U','#117d45']].filter(([key]) => card[`asset${key}`] !== '');
     // The Asset rail and header boxes share one edge so the white header reads
     // as a single continuous card component.
-    const firstRowLeft = assets.length ? 185 : 60;
-    const secondRowLeft = assets.length > 1 ? 185 : 60;
+    const assetRailLeft = 60;
+    const assetRailRight = assetRailLeft + (205 - assetRailLeft) * .75;
+    const assetRailEdgeTopSource = 148;
+    const assetRailTopSource = assetRailEdgeTopSource - 2 / (840 / 1490);
+    const assetGap = 10;
+    const assetRailTop = my(155);
+    const assetStackHeight = assets.length * 29 + Math.max(0, assets.length - 1) * assetGap;
+    const assetStartY = assetRailTop + 5;
+    const assetLastPillBottom = assetStartY + assetStackHeight;
+    const assetRailBottom = assetLastPillBottom + 10;
+    // Keep the Asset rail flush with the name panel instead of widening it
+    // into the card frame. The existing pill bounds are centered between this
+    // edge and assetRailRight.
+    const assetRailPaperLeft = mx(assetRailLeft);
+    const blackBoxStrokeInset = 2 / (600 / 1056);
+    const firstRowLeft = assets.length ? assetRailRight + blackBoxStrokeInset : 60;
+    const secondRowLeft = assets.length > 1 ? assetRailRight + blackBoxStrokeInset : 60;
 
-    // Rebuild the complete variable header on top of the fixed frame so no legacy
-    // two-cost geometry can leak through at 0, 1, or 3–5 Asset Costs.
-    c.fillStyle = '#020202'; c.fillRect(mx(60), my(155), mw(930), mh(126));
+    // Rebuild the complete variable header on a textured paper base. Each
+    // metadata row can then be removed together with its black container.
+    // Sample only the clean interior paper. Including the text-box sidewall in
+    // this crop visually doubles the left card frame inside the header.
+    // When both metadata rows are removed, the enlarged artwork occupies this
+    // space. Do not lay the placeholder paper back over it.
+    if (!metadataHidden) {
+      const metadataPaperHeight = singleMetadataRow ? 64 : 126;
+      drawFramePaperTexture(c, mx(60), my(155), mw(930), mh(metadataPaperHeight), 620, false, 90, 480);
+    }
     if (assets.length) {
-      const railBottom = 151 + assets.length * 63;
-      const railRight = 185;
-      c.beginPath(); c.moveTo(mx(60), my(155)); c.lineTo(mx(railRight), my(155)); c.lineTo(mx(railRight), my(railBottom));
-      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.closePath();
+      // Paint the entire name/cost band and Asset rail through one clipped
+      // texture pass so they read as a single continuous paper component. The
+      // paper reaches behind the frame's small black notches, while the pills
+      // retain their established horizontal position.
+      const headerPanelLeft = mx(60);
+      const headerPanelRight = mx(990);
+      const headerPanelTop = my(60);
+      const headerPanelBottom = my(assetRailEdgeTopSource);
+      const headerCornerBevel = 14;
+      c.beginPath();
+      c.moveTo(headerPanelLeft + headerCornerBevel, headerPanelTop);
+      c.lineTo(headerPanelRight - headerCornerBevel, headerPanelTop);
+      c.lineTo(headerPanelRight, headerPanelTop + headerCornerBevel);
+      c.lineTo(headerPanelRight, headerPanelBottom);
+      c.lineTo(headerPanelLeft, headerPanelBottom);
+      c.lineTo(headerPanelLeft, headerPanelTop + headerCornerBevel);
+      c.closePath();
+      c.moveTo(assetRailPaperLeft, my(assetRailTopSource)); c.lineTo(mx(assetRailRight), my(assetRailTopSource)); c.lineTo(mx(assetRailRight), assetLastPillBottom);
+      c.lineTo(mx(assetRailRight) - 8, assetRailBottom); c.lineTo(assetRailPaperLeft, assetRailBottom); c.closePath();
       c.save(); c.clip();
-      c.fillStyle = '#f4f3ef'; c.fillRect(mx(60), my(155), mw(railRight - 60), mh(railBottom - 144));
-      // Reuse a clean swatch from the frame's mottled white title band so the
-      // variable-height rail has the same printed paper texture and coloring.
-      if (layerImages.frame) {
-        const tileH = mh(96);
-        for (let tileY = my(155); tileY < my(railBottom + 11); tileY += tileH) {
-          c.drawImage(layerImages.frame, 300, 65, 220, 96, mx(60), tileY, mw(railRight - 60), tileH + .5);
-        }
-      }
+      // Limit the source to clean text-box paper. A five-pill rail is taller
+      // than that clean source band; sampling an equally tall region reaches
+      // the dark footer frame and creates black patches between lower pills.
+      drawFramePaperTexture(c, assetRailPaperLeft, my(60), mx(990) - assetRailPaperLeft, assetRailBottom - my(60), 620, false, 90, 480, 140);
       c.restore();
-      c.strokeStyle = '#050505'; c.lineWidth = 4;
-      // Keep the rail open at the top so no horizontal rule sits above the first cost pill.
-      c.beginPath(); c.moveTo(mx(railRight), my(155)); c.lineTo(mx(railRight), my(railBottom));
-      c.lineTo(mx(157), my(railBottom + 11)); c.lineTo(mx(60), my(railBottom + 11)); c.lineTo(mx(60), my(155)); c.stroke();
+      c.strokeStyle = '#050505';
+      // Keep the rail open at the top. The two vertical edges are half the
+      // weight of the beveled lower edge so the white panel reads less boxed-in.
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(mx(assetRailRight), assetRailTop); c.lineTo(mx(assetRailRight), assetLastPillBottom); c.stroke();
+      c.beginPath(); c.moveTo(assetRailPaperLeft, my(assetRailEdgeTopSource)); c.lineTo(assetRailPaperLeft, assetRailBottom); c.stroke();
+      // Continue the left card frame beneath the end cap as a shallow support
+      // shelf, matching the framed ledge beneath the metadata boxes.
+      const supportLeft = 44;
+      const supportRight = mx(assetRailRight) - 8;
+      const supportTop = assetRailBottom;
+      const supportHeight = 7;
+      const supportFill = c.createLinearGradient(0, supportTop, 0, supportTop + supportHeight);
+      supportFill.addColorStop(0, '#0b4f6d');
+      supportFill.addColorStop(.48, '#031824');
+      supportFill.addColorStop(1, '#01070b');
+      c.fillStyle = supportFill;
+      c.strokeStyle = '#020508';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(supportLeft, supportTop);
+      c.lineTo(supportRight, supportTop);
+      c.lineTo(supportRight - 7, supportTop + supportHeight);
+      c.lineTo(supportLeft + 8, supportTop + supportHeight);
+      c.lineTo(supportLeft, supportTop + 3);
+      c.closePath();
+      c.fill(); c.stroke();
+      c.strokeStyle = '#a58d6c';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(supportLeft + 11, supportTop + 2.5); c.lineTo(supportRight - 7, supportTop + 2.5); c.stroke();
+      c.strokeStyle = '#050505';
+      c.lineWidth = 2;
+      c.beginPath(); c.moveTo(mx(assetRailRight), assetLastPillBottom); c.lineTo(mx(assetRailRight) - 8, assetRailBottom); c.lineTo(assetRailPaperLeft, assetRailBottom); c.stroke();
+      // The unified paper pass covers these foreground elements, so restore
+      // them after the surface is complete.
+      drawHeaderIdentity();
     }
     c.fillStyle = '#020202'; c.strokeStyle = '#050505'; c.lineWidth = 4;
-    c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
-    c.strokeRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
-    c.fillRect(mx(secondRowLeft), my(219), mw(990 - secondRowLeft), mh(62));
-    c.strokeRect(mx(secondRowLeft), my(219), mw(990 - secondRowLeft), mh(62));
-    c.strokeStyle = '#eeeeec'; c.lineWidth = 1.5; c.beginPath();
-    c.moveTo(mx(secondRowLeft + 18), my(219)); c.lineTo(mx(974), my(219)); c.stroke();
+    if (card.showTags) {
+      c.fillRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
+      c.strokeRect(mx(firstRowLeft), my(155), mw(990 - firstRowLeft), mh(64));
+    }
+    if (card.showTypes) {
+      const typesRowLeft = typesOnly ? firstRowLeft : secondRowLeft;
+      const typesRowTop = typesOnly ? 155 : 219;
+      c.fillRect(mx(typesRowLeft), my(typesRowTop), mw(990 - typesRowLeft), mh(62));
+      c.strokeRect(mx(typesRowLeft), my(typesRowTop), mw(990 - typesRowLeft), mh(62));
+      c.strokeStyle = '#eeeeec'; c.lineWidth = 1.5; c.beginPath();
+      c.moveTo(mx(typesRowLeft + 18), my(typesRowTop)); c.lineTo(mx(974), my(typesRowTop)); c.stroke();
+    }
+
+    if (card.showTags || card.showTypes) {
+      const lastMetadataBottomSource = card.showTypes ? (typesOnly ? 217 : 281) : 219;
+      const supportTop = my(lastMetadataBottomSource);
+      const supportLeft = mx(900);
+      const supportRight = 616;
+      const supportHeight = 7;
+      const supportFill = c.createLinearGradient(0, supportTop, 0, supportTop + supportHeight);
+      supportFill.addColorStop(0, '#0b4f6d');
+      supportFill.addColorStop(.48, '#031824');
+      supportFill.addColorStop(1, '#01070b');
+      c.fillStyle = supportFill;
+      c.strokeStyle = '#020508';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(supportRight, supportTop);
+      c.lineTo(supportLeft, supportTop);
+      c.lineTo(supportLeft + 7, supportTop + supportHeight);
+      c.lineTo(supportRight - 8, supportTop + supportHeight);
+      c.lineTo(supportRight, supportTop + 3);
+      c.closePath();
+      c.fill(); c.stroke();
+      c.strokeStyle = '#a58d6c';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(supportLeft + 7, supportTop + 2.5); c.lineTo(supportRight - 11, supportTop + 2.5); c.stroke();
+    }
+
+    if (assets.length && (card.showTags || card.showTypes)) {
+      // The source frame's left metadata shelf can cross the Assets rail at a
+      // pill boundary. Repaint only the rail portion above that shelf; pills
+      // are drawn afterward, so their rims remain completely intact.
+      const lastMetadataBottomSource = card.showTypes ? (typesOnly ? 217 : 281) : 219;
+      const maskY = my(lastMetadataBottomSource) - 2;
+      const maskHeight = 11;
+      const railRight = mx(assetRailRight);
+      drawFramePaperTexture(c, assetRailPaperLeft, maskY, railRight - assetRailPaperLeft, maskHeight, 650, false, 90, 100, maskHeight);
+      c.strokeStyle = '#050505';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(assetRailPaperLeft, maskY); c.lineTo(assetRailPaperLeft, maskY + maskHeight); c.stroke();
+      c.beginPath(); c.moveTo(railRight, maskY); c.lineTo(railRight, maskY + maskHeight); c.stroke();
+    }
 
     const firstRowCenter = mx((firstRowLeft + 990) / 2);
     const secondRowCenter = mx((secondRowLeft + 990) / 2);
     const firstRowWidth = mw(990 - firstRowLeft - 24);
     const secondRowWidth = mw(990 - secondRowLeft - 24);
 
-    const loadoutSize = fitText(c, card.loadout, firstRowWidth, 23, 16, 500);
-    c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; fillTextOpticallyCentered(c, card.loadout, firstRowCenter, my(187));
-    const traitLine = `${card.rarity} • ${card.traits}`;
-    const traitSize = fitText(c, traitLine, secondRowWidth, 23, 15, 500);
-    c.font = `500 ${traitSize}px Arial`; fillTextOpticallyCentered(c, traitLine, secondRowCenter, my(250));
+    if (card.showTags) {
+      const loadoutSize = fitText(c, card.loadout, firstRowWidth, 23, 16, 500);
+      c.fillStyle = '#f4f4f4'; c.font = `500 ${loadoutSize}px Arial`; fillTextOpticallyCentered(c, card.loadout, firstRowCenter, my(187));
+    }
+    if (card.showTypes) {
+      const traitLine = card.rarity === 'None' ? card.traits : `${card.rarity} • ${card.traits}`;
+      const typesRowCenter = typesOnly ? firstRowCenter : secondRowCenter;
+      const typesRowWidth = typesOnly ? firstRowWidth : secondRowWidth;
+      const typesTextY = typesOnly ? 187 : 250;
+      const traitSize = fitText(c, traitLine, typesRowWidth, 23, 15, 500);
+      c.fillStyle = '#f4f4f4'; c.font = `500 ${traitSize}px Arial`; fillTextOpticallyCentered(c, traitLine, typesRowCenter, my(typesTextY));
+    }
 
+    const assetPillOpticalX = 0;
+    const assetPillLeft = mx(assetRailLeft) + 5 + assetPillOpticalX;
+    const assetPillRight = mx(assetRailRight) - 5 + assetPillOpticalX;
+    const assetPillWidth = assetPillRight - assetPillLeft;
+    const assetPillSplit = assetPillLeft + assetPillWidth / 2;
+    const assetValueCenter = (assetPillLeft + assetPillSplit) / 2;
+    const assetLetterCenter = (assetPillSplit + assetPillRight) / 2;
     assets.forEach(([key, color], i) => {
-      const y = 120 + i * 36;
-      const assetFill = c.createLinearGradient(70, y, 124, y + 29);
+      const y = assetStartY + i * (29 + assetGap);
+      const assetFill = c.createLinearGradient(assetPillLeft, y, assetPillRight, y + 29);
       assetFill.addColorStop(0, '#e9e5d9'); assetFill.addColorStop(.42, '#d2d3cd'); assetFill.addColorStop(.72, '#e2dfd3'); assetFill.addColorStop(1, '#aeb3ae');
-      c.fillStyle = assetFill; roundedRect(c, 70, y, 54, 29, 14).fill();
-      strokeEmbossedRoundedRect(c, 70, y, 54, 29, 14, 2.5);
+      c.fillStyle = assetFill; roundedRect(c, assetPillLeft, y, assetPillWidth, 29, 14).fill();
+      strokeEmbossedRoundedRect(c, assetPillLeft, y, assetPillWidth, 29, 14, 2.5);
       // Clip the color field to the complete pill silhouette so it seats directly
       // against the right and bottom inner edges instead of leaving a pale gap.
       c.save();
-      roundedRect(c, 70, y, 54, 29, 14).clip();
-      const colorTexture = c.createLinearGradient(97, y, 124, y + 29);
+      roundedRect(c, assetPillLeft, y, assetPillWidth, 29, 14).clip();
+      const colorTexture = c.createLinearGradient(assetPillSplit, y, assetPillRight, y + 29);
       colorTexture.addColorStop(0, '#b8ad94'); colorTexture.addColorStop(.12, color); colorTexture.addColorStop(.68, color); colorTexture.addColorStop(1, '#16191a');
-      c.fillStyle = colorTexture; c.fillRect(97, y, 27, 29);
+      c.fillStyle = colorTexture; c.fillRect(assetPillSplit, y, assetPillRight - assetPillSplit, 29);
       c.restore();
       // Redraw the outside edge over the clipped fill for a clean, continuous rim.
-      strokeEmbossedRoundedRect(c, 70, y, 54, 29, 14, 2.5);
-      c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextOpticallyCentered(c, card[`asset${key}`], 84, y + 15);
-      c.fillStyle = '#fff'; c.font = '900 22px "Arial Black", Arial'; fillTextOpticallyCentered(c, key, 109.5, y + 15);
+      strokeEmbossedRoundedRect(c, assetPillLeft, y, assetPillWidth, 29, 14, 2.5);
+      c.fillStyle = '#050505'; c.font = '900 25px "Arial Black", Arial'; fillTextGlyphCentered(c, card[`asset${key}`], assetValueCenter + 2, y + 21.5);
+      c.fillStyle = '#fff'; c.font = '900 22px "Arial Black", Arial'; fillTextGlyphCentered(c, key, assetLetterCenter, y + 20.5);
     });
 
-    const rarityCount = { Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] || 4;
-    c.fillStyle = '#050708'; c.beginPath(); c.moveTo(478, 586); c.lineTo(581, 586); c.lineTo(575, 608); c.lineTo(467, 608); c.closePath(); c.fill();
-    for (let i = 0; i < rarityCount; i++) {
-      const x = 571 - (rarityCount - i) * 22;
-      if (layerImages.bolt) c.drawImage(layerImages.bolt, x + 1, 590, 16, 16);
-      else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(x + 9, 598, 7, 0, Math.PI * 2); c.fill(); }
+    // The bundled sample artwork also contains the legacy four-bolt strip.
+    // Continue a clean rectangular band of the already-rendered artwork from
+    // immediately above it, rather than restoring those baked-in sockets or
+    // leaving a floating trapezoidal patch. Scale the backing-store sample so
+    // preview and high-DPI exports remain identical.
+    const rarityArtPatch = document.createElement('canvas'); rarityArtPatch.width = 142; rarityArtPatch.height = 25;
+    rarityArtPatch.getContext('2d').drawImage(c.canvas, 450 * scale, 550 * scale, 142 * scale, 25 * scale, 0, 0, 142, 25);
+    c.drawImage(rarityArtPatch, 450, 575, 142, 25);
+
+    const rarityCount = { None: 0, Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] ?? 4;
+    const boltHousingRight = 592;
+    if (rarityCount > 0) {
+      const boltHousingWidth = rarityCount * 22 + 2;
+      const boltHousingLeft = boltHousingRight - boltHousingWidth;
+      const boltHousingFill = c.createLinearGradient(0, 582, 0, 601);
+      boltHousingFill.addColorStop(0, '#596369'); boltHousingFill.addColorStop(.16, '#1b2d36'); boltHousingFill.addColorStop(.42, '#05080a'); boltHousingFill.addColorStop(1, '#102f3e');
+      c.fillStyle = boltHousingFill; c.strokeStyle = '#020406'; c.lineWidth = 2.4;
+      c.beginPath(); c.moveTo(boltHousingLeft + 5, 582); c.lineTo(boltHousingRight, 582); c.lineTo(boltHousingRight, 601); c.lineTo(boltHousingLeft, 601); c.closePath(); c.fill(); c.stroke();
+      // The bright leading bevel makes the moving left sidewall readable as
+      // bolt counts change, while the housing stays inside the frame mount.
+      c.strokeStyle = '#748086'; c.lineWidth = 1.25;
+      c.beginPath(); c.moveTo(boltHousingLeft + 5, 583); c.lineTo(boltHousingLeft + 1, 599); c.stroke();
+      c.strokeStyle = 'rgba(73, 154, 184, .7)'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(boltHousingLeft + 6, 584); c.lineTo(boltHousingRight, 584); c.stroke();
+      for (let i = 0; i < rarityCount; i++) {
+        // Keep the bolt row seated against the right side while the housing
+        // contracts only from its left edge; the frame-side edge never moves.
+        const boltCenterX = boltHousingRight - 12 - (rarityCount - 1 - i) * 22;
+        if (layerImages.bolt) c.drawImage(layerImages.bolt, boltCenterX - 8, 584, 16, 16);
+        else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(boltCenterX, 592, 7, 0, Math.PI * 2); c.fill(); }
+      }
     }
+    // Rebuild the uninterrupted frame rail last so neither the mount nor the
+    // bolt housing can overlap it.
+    const rarityRail = c.createLinearGradient(0, 600, 0, 610);
+    rarityRail.addColorStop(0, '#02070b'); rarityRail.addColorStop(.28, '#0c4a69'); rarityRail.addColorStop(.6, '#021724'); rarityRail.addColorStop(1, '#000407');
+    c.fillStyle = rarityRail; c.fillRect(457, 600, 135, 10);
+    c.strokeStyle = '#020508'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(457, 600); c.lineTo(592, 600); c.moveTo(457, 610); c.lineTo(592, 610); c.stroke();
+    c.strokeStyle = 'rgba(40, 124, 158, .72)'; c.lineWidth = 1; c.beginPath(); c.moveTo(458, 603); c.lineTo(591, 603); c.stroke();
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    drawTapIcon(c, 94, 660);
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
     const ruleSegments = ruleParts.length > 1
-      ? [{ text: ': ', weight: 600, size: 20.5 }, { text: `${ruleParts[0]} `, weight: 800, size: 20.5 }, { text: `(${ruleParts[1]})`, style: 'italic', weight: 400, size: 21.5 }]
-      : [{ text: ': ', weight: 600, size: 20.5 }, { text: card.rules, weight: 700, size: 20.5 }];
-    let y = drawStyledSegments(c, ruleSegments, 107, 668, 464, 24, 4) + 40;
-    if (card.flavor) { c.font = 'italic 21px Arial'; wrapLines(c, card.flavor, 466, 3).forEach(line => { c.fillText(line, 85, y); y += 23; }); }
+      ? [
+          ...parseMarkdownSegments(`${ruleParts[0]} `, { weight: 800, size: 20.5 }),
+          ...parseMarkdownSegments(`(${ruleParts[1]})`, { style: 'italic', weight: 400, size: 21.5 })
+        ]
+      : parseMarkdownSegments(card.rules, { weight: 700, size: 20.5 });
+    drawStyledSegments(c, ruleSegments, 85, 653, 486, 24, 4);
+    if (card.flavor) {
+      const flavorSegments = parseMarkdownSegments(card.flavor, { style: 'italic', weight: 400, size: 21 });
+      const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false);
+      const flavorY = 764 - Math.max(0, flavorLayout.lines - 1) * 23;
+      drawStyledSegments(c, flavorSegments, 85, flavorY, 466, 23, 3);
+    }
 
-    // Cover the plain frame pods with beveled blue-black housings that visually
-    // lock into the surrounding metalwork, then seat the stat gauges as insets.
-    if (layerImages.leftStatHousing) c.drawImage(layerImages.leftStatHousing, 58, 776, 149, 64);
-    else drawStatHousing(c, 58, 776, 149, 64, false);
-    if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, 453, 776, 151, 64);
-    else drawStatHousing(c, 453, 776, 151, 64, true);
-    // Equal 65 x 49 Speed/Attack ovals form a 133 px group centered at 132.5,
-    // the exact horizontal center of the 149 px left housing.
+    const hasSpeed = card.speed !== '-', hasAttack = card.attack !== '-';
+    const hasArmor = card.armor !== '-', hasStructure = card.structure !== '-';
     const statCenterY = 808;
-    const speedCenterX = 98.5, attackCenterX = 166.5;
-    drawSpeedGauge(c, card.speed, speedCenterX - 32.5, statCenterY - 24.5, 65, 49);
-    fillTexturedEllipse(c, attackCenterX, statCenterY, 32.5, 24.5, ['#cf4a4d', '#b70b15', '#7e090e', '#c82a2f', '#52080b'], 7);
-    strokeEmbossedEllipse(c, attackCenterX, statCenterY, 32.5, 24.5, 3.2);
-
-    // Center the original Armor/Structure footprint in the right housing,
-    // then leave Structure as a clean value on the shared recessed background.
+    const pairedLeftX = 73;
+    const speedCenterX = 113.5, attackCenterX = 181.5;
     const armorCenterX = 494.5, structureCenterX = 555.5;
-    fillTexturedEllipse(c, armorCenterX, statCenterY, 24.5, 24.5, ['#deddd4', '#b4bbb9', '#737b7c', '#c9cbc4', '#686f70'], 13);
-    strokeEmbossedEllipse(c, armorCenterX, statCenterY, 24.5, 24.5, 3.1);
-    c.textAlign = 'center'; c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextGlyphCentered(c, card.speed, speedCenterX, statCenterY);
-    c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextGlyphCentered(c, card.attack, attackCenterX, statCenterY);
-    c.fillStyle = '#050505'; fillTextGlyphCentered(c, card.armor, armorCenterX, statCenterY);
-    c.fillStyle = '#fff'; fillTextGlyphCentered(c, card.structure, structureCenterX, statCenterY);
+    const compactLeftX = 70.5, compactRightX = 500, compactHousingWidth = 88;
+    // Both mirrored compact housings use the same true 44px midpoint.
+    const liveAttackCenterX = !hasSpeed && hasAttack ? compactLeftX + 44 : attackCenterX;
+    const liveStructureCenterX = !hasArmor && hasStructure ? compactRightX + 44 : structureCenterX;
+    const restoreFrameRegion = (x, y, w, h) => {
+      if (!layerImages.frame) return;
+      const frameScaleX = layerImages.frame.naturalWidth / trim.w;
+      const frameScaleY = layerImages.frame.naturalHeight / trim.h;
+      c.drawImage(
+        layerImages.frame,
+        (x - trim.x) * frameScaleX, (y - trim.y) * frameScaleY,
+        w * frameScaleX, h * frameScaleY,
+        x, y, w, h
+      );
+    };
+
+    // The source frame contains paired grey pods. When either pair becomes
+    // compact, rebuild the complete footer in one pass so neither an unused
+    // oval nor hard-edged cleanup rectangles remain behind the live housings.
+    if (!(hasSpeed && hasAttack && hasArmor && hasStructure)) {
+      clearLegacyStatFooter(c, 58, 776, 534, 64);
+      // The compact housings have transparent lower corners. Put the original
+      // frame rail beneath them before they are drawn, so those cutouts reveal
+      // the blue/gold card frame rather than the rebuilt white footer paper.
+      restoreFrameRegion(30, 832, 600, 8);
+    }
+
+    // Swap the paired housings for compact single-stat assets when one side is
+    // removed. Attack-only remains anchored to the original housing's right
+    // edge; Structure-only remains anchored to the card's right frame.
+    if (hasSpeed && hasAttack) {
+      if (layerImages.leftStatHousing) c.drawImage(layerImages.leftStatHousing, pairedLeftX, 776, 149, 64);
+      else drawStatHousing(c, pairedLeftX, 776, 149, 64, false);
+    } else if (hasSpeed || hasAttack) {
+      if (layerImages.attackOnlyHousing) c.drawImage(layerImages.attackOnlyHousing, compactLeftX, 776, compactHousingWidth, 64);
+      else drawStatHousing(c, compactLeftX, 776, compactHousingWidth, 64, false);
+    }
+    const rightHousing = { x: 462, y: 779, w: 130, h: 58 };
+    if (hasArmor && hasStructure) {
+      if (layerImages.rightStatHousing) c.drawImage(layerImages.rightStatHousing, rightHousing.x, rightHousing.y, rightHousing.w, rightHousing.h);
+      else drawStatHousing(c, rightHousing.x, rightHousing.y, rightHousing.w, rightHousing.h, true);
+      drawImageTextureRoundedRect(c, layerImages.statTexturePalette, { x: 937, y: 423, w: 909, h: 423 }, 468, 784, 116, 48, 24, .96);
+    } else if (hasArmor || hasStructure) {
+      const singleRightX = hasStructure ? compactRightX : 458;
+      const singleRightWidth = hasStructure ? compactHousingWidth : 73;
+      const singleRightY = hasStructure ? 776 : 779;
+      const singleRightHeight = hasStructure ? 64 : 58;
+      if (layerImages.structureOnlyHousing) c.drawImage(layerImages.structureOnlyHousing, singleRightX, singleRightY, singleRightWidth, singleRightHeight);
+      else drawStatHousing(c, singleRightX, singleRightY, singleRightWidth, singleRightHeight, true);
+      if (hasStructure) drawImageTextureRoundedRect(c, layerImages.statTexturePalette, { x: 937, y: 423, w: 909, h: 423 }, liveStructureCenterX - 29.5, 784, 59, 48, 24, .96);
+    }
+
+    if (hasSpeed) drawSpeedGauge(c, card.speed, speedCenterX - 32.5, statCenterY - 24.5, 65, 49);
+    if (hasAttack) {
+      fillTexturedEllipse(c, liveAttackCenterX, statCenterY, 32.5, 24.5, ['#cf4a4d', '#b70b15', '#7e090e', '#c82a2f', '#52080b'], 7);
+      drawImageTextureEllipse(c, layerImages.statTexturePalette, { x: 517, y: 0, w: 816, h: 406 }, liveAttackCenterX, statCenterY, 32.5, 24.5);
+      strokeEmbossedEllipse(c, liveAttackCenterX, statCenterY, 32.5, 24.5, 3.2);
+    }
+    if (hasArmor) {
+      fillTexturedEllipse(c, armorCenterX, statCenterY, 24.5, 24.5, ['#deddd4', '#b4bbb9', '#737b7c', '#c9cbc4', '#686f70'], 13);
+      drawImageTextureEllipse(c, layerImages.statTextureWhite, { x: 0, y: 0, w: 176, h: 81 }, armorCenterX, statCenterY, 24.5, 24.5);
+      c.save(); c.beginPath(); c.ellipse(armorCenterX, statCenterY, 24.5, 24.5, 0, 0, Math.PI * 2); c.clip();
+      c.fillStyle = 'rgba(91, 98, 98, .18)'; c.fillRect(armorCenterX - 24.5, statCenterY - 24.5, 49, 49); c.restore();
+      strokeEmbossedEllipse(c, armorCenterX, statCenterY, 24.5, 24.5, 3.1);
+    }
+    c.textAlign = 'center';
+    if (hasSpeed) { c.fillStyle = '#050505'; c.font = `900 ${card.speed.length > 1 ? 29 : 35}px "Arial Black", Arial`; fillTextGlyphCentered(c, card.speed, speedCenterX, statCenterY); }
+    if (hasAttack) { c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextGlyphCentered(c, card.attack, liveAttackCenterX, statCenterY); }
+    if (hasArmor) { c.fillStyle = '#050505'; c.font = '900 37px "Arial Black", Arial'; fillTextGlyphCentered(c, card.armor, armorCenterX, statCenterY); }
+    if (hasStructure) { c.fillStyle = '#fff'; c.font = '900 37px "Arial Black", Arial'; fillTextGlyphCentered(c, card.structure, liveStructureCenterX, statCenterY); }
     c.fillStyle = '#050505'; c.font = '600 16px "Arial Narrow", Arial'; fillTextOpticallyCentered(c, card.artist ? `Illus. ${card.artist}` : 'Artist credit', 330, 806);
     c.font = '500 11.5px Arial'; fillTextOpticallyCentered(c, card.copyright || `${card.setCode} • ${card.collector}`, 330, 821);
+
+    if (!(hasSpeed && hasAttack && hasArmor && hasStructure) && layerImages.frame) {
+      // Compact stat housings sit beneath the card's structural shell. Restore
+      // the outer sidewalls and bottom rail last so the frame remains complete
+      // instead of looking cropped where a replacement housing meets it.
+      // Restore all the way to each compact housing. The source frame supplies
+      // the true sidewall geometry, so no paper wedge or synthetic connector
+      // can sit above or crop the card frame.
+      restoreFrameRegion(30, 760, 41, 110);
+      // Meet the footer at the frame's true inner edge. The earlier 579px
+      // restore started 10px too far inward and left the right side stepped
+      // away from the surrounding frame.
+      const rightFrameRestoreX = !hasArmor && !hasStructure ? 589 : 588;
+      restoreFrameRegion(rightFrameRestoreX, 760, 630 - rightFrameRestoreX, 110);
+      restoreFrameRegion(30, 840, 600, 30);
+    }
 
     if (guides) {
       c.save(); c.setLineDash([8, 7]); c.strokeStyle = '#ff3f6dcc'; c.lineWidth = 2; c.strokeRect(30, 30, 600, 840); c.setLineDash([]); c.fillStyle = '#ff3f6d'; c.font = '700 10px Arial'; c.textAlign = 'left'; c.fillText('TRIM', 35, 43); c.restore();
