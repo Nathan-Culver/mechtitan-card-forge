@@ -12,6 +12,7 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Exact 2.5 × 3.5 inch poker-card trim with 1/8 inch bleed on every edge
 - Rules for every specified cost and combat stat
 - Live comprehensive Unit balance model with separate Static, Operational, and Economic Power; suggested Construction; cost variance; Battlefield Projection diagnostics; and configurable lifetime cost
+- Compact Power Rating summary with an on-demand BP breakdown
 - Artwork upload, crop positioning, frame themes, and typography controls
 - Local set library with search, faction filtering, duplication, and multi-select
 - CSV, TSV, XLSX, XLS, and JSON bulk import
@@ -49,6 +50,8 @@ Rules text supports compact game symbols alongside Markdown:
 - `{0}` through `{20}` — Resource-cost symbol
 
 Asset letters are case-sensitive so `{T}` means the Tactics Asset, while lowercase `{t}` means Tap.
+
+Inline Asset symbols use the same embossed capsule design as Asset Cost pills, filled completely with the Asset color and centered on the letter.
 - `assets/speed-xs.svg` through `assets/speed-xf.svg` — the five moving Speed indicators
 - `assets/stat-housing-left.svg` and `assets/stat-housing-right.svg` — frame-integrated bottom stat housings
 - `assets/attack-pill.svg` and `assets/defense-pill.svg` — inset combat-stat gauges
@@ -72,5 +75,7 @@ The editor uses the current three-part Unit model:
 - Lifetime cost = actual Construction + Operation × expected uses
 
 Battlefield Projection and economy warnings are diagnostics only. Rarity and Asset requirements remain outside the numeric Total Power formula.
+
+For the standard Type/Subtype presentation, enter the most specific affiliation first and the broad card type last—for example `Wolf • Clan • Artillery • Mech`. The renderer places rarity first, producing `Uncommon • Wolf • Clan • Artillery • Mech`.
 
 Speed contributes `−1 / −0.5 / 0 / +0.5 / +1` for XS / S / M / F / XF. Operation multipliers are `1.35 / 1.15 / 1 / 0.88 / 0.78 / 0.70` for Operation 0–5. The editor reports cost variance as actual Construction minus suggested Construction, using the attached model's aggressive, baseline, conservative, and below-baseline testing flags.

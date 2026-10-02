@@ -56,7 +56,10 @@ h3 { font-size: .86rem; }
 .balance-panel[data-state="over"] { border-left-color: #e5b14c; background: #231d10; }
 .balance-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .balance-summary strong { display: block; font-size: 1rem; }
+.balance-summary-actions { display: flex; align-items: center; gap: .45rem; }
 .balance-badge { flex: none; padding: .35rem .55rem; border: 1px solid currentColor; color: var(--muted); font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+.balance-details-toggle { min-height: 0; padding: .35rem .55rem; border: 1px solid var(--line-bright); background: #071019; color: #bdcad5; font-size: .7rem; font-weight: 800; white-space: nowrap; }
+.balance-details-toggle:hover { border-color: var(--cyan); color: var(--text); }
 .balance-panel[data-state="balanced"] .balance-badge { color: #74e8ad; }
 .balance-panel[data-state="under"] .balance-badge { color: #ff8da0; }
 .balance-panel[data-state="over"] .balance-badge { color: #f2c86f; }
@@ -68,6 +71,7 @@ h3 { font-size: .86rem; }
 .balance-input-grid input { padding: .5rem; }
 .balance-panel p { margin: .65rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.4; }
 .balance-panel p.has-warning { color: #f2c86f; }
+.field-hint { display: block; margin: -.15rem 0 .85rem; color: var(--muted); font-size: .68rem; line-height: 1.35; }
 .field { margin-bottom: .85rem; min-width: 0; }
 .field label, fieldset legend { display: flex; justify-content: space-between; gap: .4rem; margin-bottom: .38rem; color: #bdcad5; font-size: .78rem; font-weight: 750; }
 .field label span, fieldset legend span, output { color: var(--muted); font-weight: 500; }
@@ -174,6 +178,8 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 0; }
   .stat-cost-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
   .stat-cost-grid label { font-size: .68rem; }
+  .balance-summary { align-items: flex-start; }
+  .balance-summary-actions { align-items: flex-end; flex-direction: column; }
   .balance-metrics, .balance-input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .asset-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .28rem; }
   .asset b { width: 24px; }

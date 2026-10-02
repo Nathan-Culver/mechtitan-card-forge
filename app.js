@@ -3,7 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 3;
+  const DATA_VERSION = 4;
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -110,6 +110,12 @@
       migrated.staticAbilityBP = Number(migrated.staticAbilityBP ?? 0);
       migrated.battlefieldProjection = Number(migrated.battlefieldProjection ?? 1);
       migrated.expectedOperations = Number(migrated.expectedOperations ?? 3);
+    }
+    if (fromVersion < 4) {
+      const legacyTraits = String(migrated.traits || '').split('•').map(part => part.trim()).filter(Boolean).join('|').toLowerCase();
+      if (legacyTraits === 'mech|artillery|omni|clan|wolf' || legacyTraits === 'mech|artillery|clan|wolf') {
+        migrated.traits = 'Wolf • Clan • Artillery • Mech';
+      }
     }
     return migrated;
   }
@@ -554,26 +560,19 @@
     c.restore();
   }
   function drawAssetIcon(c, asset, centerX, centerY) {
-    const colors = {
-      L: ['#0b5fae', '#063b70'],
-      P: ['#9c4dcc', '#612484'],
-      S: ['#8a6500', '#554000'],
-      T: ['#8b1e2d', '#57121c'],
-      U: ['#117d45', '#084b29']
-    };
-    const [top, bottom] = colors[asset] || ['#4a4a4a', '#202020'];
+    const colors = { L: '#0b5fae', P: '#9c4dcc', S: '#8a6500', T: '#8b1e2d', U: '#117d45' };
+    const color = colors[asset] || '#4a4a4a';
+    const width = 34, height = 21, radius = 10.5;
+    const left = centerX - width / 2, top = centerY - height / 2;
     c.save();
-    const gradient = c.createLinearGradient(centerX, centerY - 10.5, centerX, centerY + 10.5);
-    gradient.addColorStop(0, top);
-    gradient.addColorStop(1, bottom);
+    const gradient = c.createLinearGradient(left, top, left + width, top + height);
+    gradient.addColorStop(0, '#16191a');
+    gradient.addColorStop(.1, color);
+    gradient.addColorStop(.72, color);
+    gradient.addColorStop(1, '#16191a');
     c.fillStyle = gradient;
-    c.strokeStyle = '#050505';
-    c.lineWidth = 2.2;
-    roundedRect(c, centerX - 11.5, centerY - 10.5, 23, 21, 8).fill();
-    roundedRect(c, centerX - 11.5, centerY - 10.5, 23, 21, 8).stroke();
-    c.strokeStyle = 'rgba(255,255,255,.42)';
-    c.lineWidth = 1;
-    roundedRect(c, centerX - 9.5, centerY - 8.5, 19, 17, 6).stroke();
+    roundedRect(c, left, top, width, height, radius).fill();
+    strokeEmbossedRoundedRect(c, left, top, width, height, radius, 2.5);
     c.fillStyle = '#fff';
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.font = '900 14px "Arial Black", Arial';
@@ -640,7 +639,7 @@
         const colonToken = word === ':';
         const fontWeight = colonToken ? 640 : (segment.weight || 400);
         c.font = `${segment.style || 'normal'} ${fontWeight} ${segment.size || 18}px Arial, sans-serif`;
-        const width = resourceToken ? 26.5 : (tapToken || assetToken) ? 23 : c.measureText(word).width;
+        const width = resourceToken ? 26.5 : tapToken ? 23 : assetToken ? 36 : c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
           if (lines > maxLines) return cursorY;
@@ -649,7 +648,7 @@
         if (cursorX === x && /^\s+$/.test(word)) continue;
         if (draw) {
           if (tapToken) drawTapIcon(c, cursorX + 10.5, cursorY - 7.5);
-          else if (assetToken) drawAssetIcon(c, word[1], cursorX + 11.5, cursorY - 7.5);
+          else if (assetToken) drawAssetIcon(c, word[1], cursorX + 17, cursorY - 7.5);
           else if (resourceToken) drawResourceIcon(c, word.slice(1, -1), cursorX + 12.25, cursorY - 7.5);
           else {
             c.fillText(word, cursorX, cursorY);
@@ -1230,6 +1229,14 @@
   form.addEventListener('input', () => {
     updateOutputs(); render(); saveStatus.textContent = 'Unsaved changes';
     clearTimeout(historyTimer); historyTimer = setTimeout(pushHistory, 350);
+  });
+  document.querySelector('#balanceDetailsToggle').addEventListener('click', event => {
+    const button = event.currentTarget;
+    const details = document.querySelector('#balanceDetails');
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.textContent = expanded ? 'Show details' : 'Hide details';
+    details.hidden = expanded;
   });
   document.querySelector('#showBleed').addEventListener('change', render);
   stickyPreview.addEventListener('change', () => setStickyPreview(stickyPreview.checked));
