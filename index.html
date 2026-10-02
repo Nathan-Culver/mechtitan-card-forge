@@ -51,11 +51,34 @@
 
       <form id="cardForm" autocomplete="off">
         <section class="tab-page active" data-page="content">
+          <section id="balancePanel" class="balance-panel" data-state="incomplete" aria-live="polite">
+            <div class="balance-summary">
+              <div><span class="eyebrow">POWER RATING BALANCE</span><strong id="balanceVerdict">Add stats to calculate</strong></div>
+              <output id="balanceDelta" class="balance-badge">—</output>
+            </div>
+            <div class="balance-metrics">
+              <span>Static Power <b id="staticPowerValue">—</b></span>
+              <span>Adjusted Operational <b id="operationalPowerValue">—</b></span>
+              <span>Economic Power <b id="economicPowerValue">—</b></span>
+              <span>Total Power <b id="finalPowerValue">—</b></span>
+              <span>Suggested Construction <b id="suggestedConstructionValue">—</b></span>
+              <span>Lifetime cost <b id="lifetimeCostValue">—</b></span>
+            </div>
+            <div class="balance-input-grid" aria-label="Manual balance point adjustments">
+              <div class="field"><label for="staticKeywordBP">Static keyword BP</label><input id="staticKeywordBP" name="staticKeywordBP" type="number" min="-20" max="40" step="0.25" value="0"></div>
+              <div class="field"><label for="staticAbilityBP">Static ability BP</label><input id="staticAbilityBP" name="staticAbilityBP" type="number" min="-20" max="40" step="0.25" value="0"></div>
+              <div class="field"><label for="operationalKeywordBP">Operational keyword BP</label><input id="operationalKeywordBP" name="operationalKeywordBP" type="number" min="-20" max="40" step="0.25" value="0"></div>
+              <div class="field"><label for="operationalAbilityBP">Operational ability BP</label><input id="operationalAbilityBP" name="operationalAbilityBP" type="number" min="-20" max="40" step="0.25" value="0"></div>
+              <div class="field"><label for="battlefieldProjection">Battlefield projection</label><input id="battlefieldProjection" name="battlefieldProjection" type="number" min="1" max="5" step="0.25" value="1"></div>
+              <div class="field"><label for="expectedOperations">Expected uses</label><input id="expectedOperations" name="expectedOperations" type="number" min="0" max="20" step="1" value="3"></div>
+            </div>
+            <p id="balanceDiagnostics">Operation modifies Operational Power only. Projection is diagnostic and does not alter Total Power.</p>
+          </section>
           <div class="field full"><label for="name">Card name</label><input id="name" name="name" maxlength="34"></div>
           <div class="grid-3 stat-cost-grid">
             <div class="field"><label for="construction">Construction</label><input id="construction" name="construction" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" maxlength="2" value="-"></div>
-            <div class="field"><label for="operation">Operation</label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-4]" maxlength="1" value="-"></div>
-            <div class="field"><label for="cycle">Cycle</label><input id="cycle" name="cycle" type="text" inputmode="numeric" pattern="-|[0-3]" maxlength="1" value="-"></div>
+            <div class="field"><label for="operation">Operation</label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-5]" maxlength="1" value="-"></div>
+            <div class="field"><label for="cycle">Cycle</label><select id="cycle" name="cycle"><option value="-">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
           </div>
           <fieldset class="asset-fieldset">
             <legend>Asset costs</legend>
@@ -71,7 +94,7 @@
           <div class="field full"><label for="traits">Types / Subtypes</label><input id="traits" name="traits" maxlength="80"></div>
           <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox"><span>Show Tags box</span></label>
           <div class="field full"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None" selected>None (0 bolts)</option></select></div>
-          <div class="field full"><label for="rules">Rules text · Markdown · {T} Tap · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
+          <div class="field full"><label for="rules">Rules text · Markdown · {t} Tap · {L}/{P}/{S}/{T}/{U} Assets · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
           <div class="field full"><label for="flavor">Flavor text · Markdown</label><textarea id="flavor" name="flavor" rows="3"></textarea></div>
           <div class="grid-3">
             <div class="field"><label for="speed">Speed</label><select id="speed" name="speed"><option value="-" selected>-</option><option>XS</option><option>S</option><option>M</option><option>F</option><option>XF</option></select></div>

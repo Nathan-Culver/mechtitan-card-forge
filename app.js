@@ -3,6 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
+  const DATA_VERSION = 3;
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -36,6 +37,8 @@
     name: '', construction: '-', operation: '-', assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
     loadout: '', traits: '', rules: '', flavor: '', speed: '-',
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
+    staticKeywordBP: 0, staticAbilityBP: 0, operationalKeywordBP: 0, operationalAbilityBP: 0,
+    battlefieldProjection: 1, expectedOperations: 3,
     theme: 'titanium', titleSize: 100, uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
@@ -76,18 +79,39 @@
       ...merged,
       id: /^[a-z0-9_-]+$/i.test(String(raw.id || '')) ? String(raw.id) : uid(),
       name: String(merged.name || defaults.name).slice(0, 34),
-      construction: removableStat(merged.construction, 0, 20, 0), operation: removableStat(merged.operation, 0, 4, 0),
+      construction: removableStat(merged.construction, 0, 20, 0), operation: removableStat(merged.operation, 0, 5, 0),
       assetL: assetValue(merged.assetL), assetP: assetValue(merged.assetP), assetS: assetValue(merged.assetS), assetT: assetValue(merged.assetT), assetU: assetValue(merged.assetU),
       speed: ['XS','S','M','F','XF','-'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
       attack: removableStat(merged.attack, 0, 20, 0), armor: removableStat(merged.armor, 0, 5, 0), structure: removableStat(merged.structure, 1, 30, 1),
-      cycle: merged.cycle === '' || merged.cycle == null ? '' : removableStat(merged.cycle, 0, 3, 0),
+      cycle: merged.cycle === '' || merged.cycle == null ? '-' : removableStat(merged.cycle, 1, 3, 1),
       rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
       uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
       showTags: merged.showTags !== false && String(merged.showTags).toLowerCase() !== 'false',
       showTypes: true,
+      staticKeywordBP: clamp(merged.staticKeywordBP, -20, 40, 0), staticAbilityBP: clamp(merged.staticAbilityBP, -20, 40, 0),
+      operationalKeywordBP: clamp(merged.operationalKeywordBP, -20, 40, 0), operationalAbilityBP: clamp(merged.operationalAbilityBP, -20, 40, 0),
+      battlefieldProjection: clamp(merged.battlefieldProjection, 1, 5, 1), expectedOperations: clamp(merged.expectedOperations, 0, 20, 3),
       artScale: clamp(merged.artScale, 100, 220, 100), artX: clamp(merged.artX, -100, 100, 0), artY: clamp(merged.artY, -100, 100, 0)
     };
+  }
+
+  function migrateLegacyTapToken(card) {
+    return { ...card, rules: String(card?.rules || '').replace(/\{T\}/g, '{t}') };
+  }
+
+  function migrateCardData(card, fromVersion) {
+    let migrated = { ...card };
+    if (fromVersion < 2) migrated = migrateLegacyTapToken(migrated);
+    if (fromVersion < 3) {
+      migrated.operationalKeywordBP = Number(migrated.operationalKeywordBP ?? migrated.keywordBP ?? 0);
+      migrated.operationalAbilityBP = Number(migrated.operationalAbilityBP ?? 0) + Number(migrated.abilityBP ?? 0) + Number(migrated.positionBP ?? 0);
+      migrated.staticKeywordBP = Number(migrated.staticKeywordBP ?? 0);
+      migrated.staticAbilityBP = Number(migrated.staticAbilityBP ?? 0);
+      migrated.battlefieldProjection = Number(migrated.battlefieldProjection ?? 1);
+      migrated.expectedOperations = Number(migrated.expectedOperations ?? 3);
+    }
+    return migrated;
   }
 
   function getFormData() {
@@ -119,7 +143,7 @@
   }
 
   function persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, cards, currentId }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, cards, currentId }));
   }
 
   function saveCurrent(showToast = true) {
@@ -156,8 +180,11 @@
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if (stored?.cards?.length) {
-        cards = stored.cards.map(normalizeCard);
+        const storedVersion = Number(stored.version || 1);
+        const incoming = storedVersion < DATA_VERSION ? stored.cards.map(card => migrateCardData(card, storedVersion)) : stored.cards;
+        cards = incoming.map(normalizeCard);
         currentId = cards.some(c => c.id === stored.currentId) ? stored.currentId : cards[0].id;
+        if (storedVersion < DATA_VERSION) persist();
         return cards.find(c => c.id === currentId);
       }
     } catch (_) { /* use prototype */ }
@@ -196,6 +223,83 @@
     const zoom = document.querySelector('#zoom');
     document.querySelector('#zoomOut').textContent = `${zoom.value}%`;
     canvas.style.width = `${Math.round(660 * Number(zoom.value) / 100)}px`;
+    updateBalance();
+  }
+
+  function updateBalance() {
+    const card = getFormData();
+    const panel = document.querySelector('#balancePanel');
+    const verdict = document.querySelector('#balanceVerdict');
+    const deltaOutput = document.querySelector('#balanceDelta');
+    const staticOutput = document.querySelector('#staticPowerValue');
+    const operationalOutput = document.querySelector('#operationalPowerValue');
+    const economicOutput = document.querySelector('#economicPowerValue');
+    const finalOutput = document.querySelector('#finalPowerValue');
+    const suggestedOutput = document.querySelector('#suggestedConstructionValue');
+    const lifetimeOutput = document.querySelector('#lifetimeCostValue');
+    const diagnostics = document.querySelector('#balanceDiagnostics');
+    const mobilityBySpeed = { XS: -1, S: -.5, M: 0, F: .5, XF: 1 };
+    const operationMultiplier = { 0: 1.35, 1: 1.15, 2: 1, 3: .88, 4: .78, 5: .70 };
+    const cyclePower = { '-': 0, '': 0, 1: .5, 2: 1, 3: 1.5 };
+    const required = [card.attack, card.armor, card.structure, card.construction, card.operation];
+    const complete = required.every(value => value !== '-' && value !== '') && mobilityBySpeed[card.speed] != null && operationMultiplier[card.operation] != null;
+
+    if (!complete) {
+      panel.dataset.state = 'incomplete';
+      verdict.textContent = 'Add stats to calculate';
+      deltaOutput.textContent = '—';
+      staticOutput.textContent = '—';
+      operationalOutput.textContent = '—';
+      economicOutput.textContent = '—';
+      finalOutput.textContent = '—';
+      suggestedOutput.textContent = '—';
+      lifetimeOutput.textContent = '—';
+      diagnostics.classList.remove('has-warning');
+      diagnostics.textContent = 'Operation modifies Operational Power only. Projection is diagnostic and does not alter Total Power.';
+      return;
+    }
+
+    const staticPower = (1.5 * Number(card.armor)) + (.4 * Number(card.structure)) + Number(card.staticKeywordBP) + Number(card.staticAbilityBP);
+    const operationalPower = Number(card.attack) + mobilityBySpeed[card.speed] + Number(card.operationalKeywordBP) + Number(card.operationalAbilityBP);
+    const adjustedOperationalPower = operationalPower * operationMultiplier[card.operation];
+    const economicPower = cyclePower[card.cycle] ?? 0;
+    const finalPower = staticPower + adjustedOperationalPower + economicPower;
+    const suggestedConstruction = Math.max(0, Math.ceil((finalPower - 2) / 2));
+    const actualConstruction = Number(card.construction);
+    const delta = actualConstruction - suggestedConstruction;
+    const lifetimeCost = actualConstruction + (Number(card.operation) * Number(card.expectedOperations));
+
+    staticOutput.textContent = Number(staticPower.toFixed(2)).toString();
+    operationalOutput.textContent = Number(adjustedOperationalPower.toFixed(2)).toString();
+    economicOutput.textContent = Number(economicPower.toFixed(2)).toString();
+    finalOutput.textContent = Number(finalPower.toFixed(1)).toString();
+    suggestedOutput.textContent = suggestedConstruction;
+    lifetimeOutput.textContent = lifetimeCost;
+    deltaOutput.textContent = `CV ${delta > 0 ? '+' : ''}${delta}`;
+    if (delta === 0) {
+      panel.dataset.state = 'balanced';
+      verdict.textContent = 'Formula baseline';
+    } else if (delta <= -2) {
+      panel.dataset.state = 'under';
+      verdict.textContent = 'Very aggressive efficiency';
+    } else if (delta === -1) {
+      panel.dataset.state = 'under';
+      verdict.textContent = 'Above baseline';
+    } else if (delta === 1) {
+      panel.dataset.state = 'over';
+      verdict.textContent = 'Conservative';
+    } else {
+      panel.dataset.state = 'over';
+      verdict.textContent = 'Significantly below baseline';
+    }
+
+    const warnings = [`Projection ${Number(card.battlefieldProjection).toFixed(Number(card.battlefieldProjection) % 1 ? 2 : 0)} is diagnostic only.`];
+    const rules = String(card.rules || '');
+    if (Number(card.battlefieldProjection) >= 2) warnings.push('High Battlefield Projection: playtest positioning carefully.');
+    if (/\b(draw|cycle|resources?|cost reduction|reduce(?:s|d)? (?:the )?cost|discount)\b/i.test(rules)) warnings.push('Economy interaction detected: check draw, Cycle, and Resource loops.');
+    if (Number(card.operation) <= 1 && Number(card.cycle) === 3 && delta <= 0) warnings.push('Efficiency warning: cheap Operation, high Cycle, and aggressive Construction coincide.');
+    diagnostics.classList.toggle('has-warning', warnings.length > 1);
+    diagnostics.textContent = `Operation modifies Operational Power only. ${warnings.join(' ')}`;
   }
 
   function loadArt(data) {
@@ -449,6 +553,33 @@
     fillTextOpticallyCentered(c, String(value), centerX, centerY + .5);
     c.restore();
   }
+  function drawAssetIcon(c, asset, centerX, centerY) {
+    const colors = {
+      L: ['#0b5fae', '#063b70'],
+      P: ['#9c4dcc', '#612484'],
+      S: ['#8a6500', '#554000'],
+      T: ['#8b1e2d', '#57121c'],
+      U: ['#117d45', '#084b29']
+    };
+    const [top, bottom] = colors[asset] || ['#4a4a4a', '#202020'];
+    c.save();
+    const gradient = c.createLinearGradient(centerX, centerY - 10.5, centerX, centerY + 10.5);
+    gradient.addColorStop(0, top);
+    gradient.addColorStop(1, bottom);
+    c.fillStyle = gradient;
+    c.strokeStyle = '#050505';
+    c.lineWidth = 2.2;
+    roundedRect(c, centerX - 11.5, centerY - 10.5, 23, 21, 8).fill();
+    roundedRect(c, centerX - 11.5, centerY - 10.5, 23, 21, 8).stroke();
+    c.strokeStyle = 'rgba(255,255,255,.42)';
+    c.lineWidth = 1;
+    roundedRect(c, centerX - 9.5, centerY - 8.5, 19, 17, 6).stroke();
+    c.fillStyle = '#fff';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '900 14px "Arial Black", Arial';
+    fillTextOpticallyCentered(c, asset, centerX, centerY + .35);
+    c.restore();
+  }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
     const words = String(text || '').split(/\s+/).filter(Boolean); const lines = []; let line = '';
     for (const word of words) {
@@ -491,10 +622,11 @@
   function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines, draw = true) {
     let cursorX = x, cursorY = y, lines = 1;
     for (const segment of segments) {
-      // Rules text supports compact inline game symbols: {T}/{t} for Tap and
-      // {0} through {20} for resource costs. Keep each symbol atomic while
-      // wrapping so it behaves like a single printed glyph.
-      const words = String(segment.text || '').split(/(\{(?:[tT]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
+      // Rules text supports compact inline game symbols: {t} for Tap,
+      // {L}/{P}/{S}/{T}/{U} for Asset pills, and {0} through {20} for
+      // resource costs. Keep each symbol atomic while wrapping so it behaves
+      // like a single printed glyph.
+      const words = String(segment.text || '').split(/(\{(?:t|[LPSTU]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
       for (const word of words) {
         if (word === '\n') {
           lines += 1;
@@ -502,12 +634,13 @@
           cursorX = x; cursorY += lineHeight;
           continue;
         }
-        const tapToken = /^\{[tT]\}$/.test(word);
+        const tapToken = word === '{t}';
+        const assetToken = /^\{[LPSTU]\}$/.test(word);
         const resourceToken = /^\{(?:[0-9]|1[0-9]|20)\}$/.test(word);
         const colonToken = word === ':';
         const fontWeight = colonToken ? 640 : (segment.weight || 400);
         c.font = `${segment.style || 'normal'} ${fontWeight} ${segment.size || 18}px Arial, sans-serif`;
-        const width = resourceToken ? 26.5 : tapToken ? 23 : c.measureText(word).width;
+        const width = resourceToken ? 26.5 : (tapToken || assetToken) ? 23 : c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
           if (lines > maxLines) return cursorY;
@@ -516,6 +649,7 @@
         if (cursorX === x && /^\s+$/.test(word)) continue;
         if (draw) {
           if (tapToken) drawTapIcon(c, cursorX + 10.5, cursorY - 7.5);
+          else if (assetToken) drawAssetIcon(c, word[1], cursorX + 11.5, cursorY - 7.5);
           else if (resourceToken) drawResourceIcon(c, word.slice(1, -1), cursorX + 12.25, cursorY - 7.5);
           else {
             c.fillText(word, cursorX, cursorY);
@@ -1034,7 +1168,7 @@
 
   function exportProject() {
     saveCurrent(false);
-    const project = { app: 'MechTitan Card Forge', version: 1, exportedAt: new Date().toISOString(), print: { trimInches: [2.5,3.5], bleedInches: .125 }, cards };
+    const project = { app: 'MechTitan Card Forge', version: DATA_VERSION, exportedAt: new Date().toISOString(), print: { trimInches: [2.5,3.5], bleedInches: .125 }, cards };
     downloadBlob(new Blob([JSON.stringify(project, null, 2)], {type:'application/json'}), `${slug(cards[0]?.setCode || 'mechtitan')}-card-set.json`);
     toast(`Exported ${cards.length} card${cards.length === 1 ? '' : 's'}`);
   }
@@ -1043,8 +1177,9 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const data = JSON.parse(reader.result); const incoming = Array.isArray(data) ? data : data.cards;
+        const data = JSON.parse(reader.result); let incoming = Array.isArray(data) ? data : data.cards;
         if (!Array.isArray(incoming) || !incoming.length) throw new Error('No cards found');
+        if (!Array.isArray(data) && Number(data.version || 1) < DATA_VERSION) incoming = incoming.map(card => migrateCardData(card, Number(data.version || 1)));
         cards = incoming.map(c => normalizeCard({ ...c, id: c.id || uid() })); currentId = cards[0].id; selected.clear(); persist(); setFormData(cards[0]); toast(`Loaded ${cards.length} cards`);
       } catch (error) { toast(`Could not load project: ${error.message}`); }
     }; reader.readAsText(file);
@@ -1067,7 +1202,15 @@
   function mapImportRow(row) {
     const aliases = { cardname:'name', title:'name', constructioncost:'construction', operationcost:'operation', logistics:'assetL', politics:'assetP', strategics:'assetS', tactics:'assetT', support:'assetU', cardtext:'rules', ruletext:'rules', flavortext:'flavor', cyclevalue:'cycle', speedvalue:'speed', set:'setCode', number:'collector' };
     const mapped = {};
-    Object.entries(row).forEach(([key,value]) => { const compact = key.replace(/[^a-z0-9]/gi,'').toLowerCase(); const target = aliases[compact] || Object.keys(defaults).find(k => k.toLowerCase() === compact); if (target) mapped[target] = value; });
+    let legacyPositionBP = 0;
+    Object.entries(row).forEach(([key,value]) => {
+      const compact = key.replace(/[^a-z0-9]/gi,'').toLowerCase();
+      if (compact === 'positionbp') { legacyPositionBP += Number(value || 0); return; }
+      const legacyTarget = compact === 'keywordbp' ? 'operationalKeywordBP' : compact === 'abilitybp' ? 'operationalAbilityBP' : '';
+      const target = legacyTarget || aliases[compact] || Object.keys(defaults).find(k => k.toLowerCase() === compact);
+      if (target) mapped[target] = value;
+    });
+    if (legacyPositionBP) mapped.operationalAbilityBP = Number(mapped.operationalAbilityBP || 0) + legacyPositionBP;
     return normalizeCard({ ...mapped, id: uid() });
   }
 

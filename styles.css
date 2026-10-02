@@ -50,6 +50,24 @@ h3 { font-size: .86rem; }
 .tab.active { border-color: var(--cyan); color: var(--text); background: #101923; }
 .tab-page { display: none; }
 .tab-page.active { display: block; }
+.balance-panel { margin-bottom: 1rem; padding: .85rem; border: 1px solid var(--line-bright); border-left: 4px solid var(--muted); background: #101923; }
+.balance-panel[data-state="balanced"] { border-left-color: #54d695; background: #0d201a; }
+.balance-panel[data-state="under"] { border-left-color: #ff657d; background: #231218; }
+.balance-panel[data-state="over"] { border-left-color: #e5b14c; background: #231d10; }
+.balance-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.balance-summary strong { display: block; font-size: 1rem; }
+.balance-badge { flex: none; padding: .35rem .55rem; border: 1px solid currentColor; color: var(--muted); font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+.balance-panel[data-state="balanced"] .balance-badge { color: #74e8ad; }
+.balance-panel[data-state="under"] .balance-badge { color: #ff8da0; }
+.balance-panel[data-state="over"] .balance-badge { color: #f2c86f; }
+.balance-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin: .75rem 0; }
+.balance-metrics span { padding: .45rem; background: #071019; color: var(--muted); font-size: .66rem; }
+.balance-metrics b { display: block; margin-top: .18rem; color: var(--text); font-size: .88rem; }
+.balance-input-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.balance-input-grid .field { margin: 0; }
+.balance-input-grid input { padding: .5rem; }
+.balance-panel p { margin: .65rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.4; }
+.balance-panel p.has-warning { color: #f2c86f; }
 .field { margin-bottom: .85rem; min-width: 0; }
 .field label, fieldset legend { display: flex; justify-content: space-between; gap: .4rem; margin-bottom: .38rem; color: #bdcad5; font-size: .78rem; font-weight: 750; }
 .field label span, fieldset legend span, output { color: var(--muted); font-weight: 500; }
@@ -156,6 +174,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 0; }
   .stat-cost-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
   .stat-cost-grid label { font-size: .68rem; }
+  .balance-metrics, .balance-input-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .asset-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .28rem; }
   .asset b { width: 24px; }
   .asset input { padding-inline: .1rem; }

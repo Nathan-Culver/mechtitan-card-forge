@@ -11,6 +11,7 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Bolt-head rarity rail: Unique (1), Rare (2), Uncommon (3), Common (4)
 - Exact 2.5 × 3.5 inch poker-card trim with 1/8 inch bleed on every edge
 - Rules for every specified cost and combat stat
+- Live comprehensive Unit balance model with separate Static, Operational, and Economic Power; suggested Construction; cost variance; Battlefield Projection diagnostics; and configurable lifetime cost
 - Artwork upload, crop positioning, frame themes, and typography controls
 - Local set library with search, faction filtering, duplication, and multi-select
 - CSV, TSV, XLSX, XLS, and JSON bulk import
@@ -38,6 +39,16 @@ The editable renderer keeps each variable card component separate. The most impo
 - `assets/asset-cost-pill.svg` — Logistics, Politics, Strategics, Tactics, and Support costs
 - `assets/cycle-reference-ring.png` and `assets/cycle-ring.svg` — Cycle symbol
 - `assets/tap-icon.svg` — Tap/activation symbol used in rules text
+
+## Inline rules symbols
+
+Rules text supports compact game symbols alongside Markdown:
+
+- `{t}` — Tap symbol
+- `{L}`, `{P}`, `{S}`, `{T}`, `{U}` — the matching colored Asset pill, with no number
+- `{0}` through `{20}` — Resource-cost symbol
+
+Asset letters are case-sensitive so `{T}` means the Tactics Asset, while lowercase `{t}` means Tap.
 - `assets/speed-xs.svg` through `assets/speed-xf.svg` — the five moving Speed indicators
 - `assets/stat-housing-left.svg` and `assets/stat-housing-right.svg` — frame-integrated bottom stat housings
 - `assets/attack-pill.svg` and `assets/defense-pill.svg` — inset combat-stat gauges
@@ -47,4 +58,19 @@ The editable renderer keeps each variable card component separate. The most impo
 
 Use `mechtitan-card-template.csv` as the starting point. Supported columns include:
 
-`name`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `rarity`, `faction`, `artist`, `setCode`, `collector`, and `theme`.
+`name`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `staticKeywordBP`, `staticAbilityBP`, `operationalKeywordBP`, `operationalAbilityBP`, `battlefieldProjection`, `expectedOperations`, `rarity`, `faction`, `artist`, `setCode`, `collector`, and `theme`.
+
+## Unit balance model
+
+The editor uses the current three-part Unit model:
+
+- Static Power = `1.5 × Armor + 0.4 × Structure + static keywords + static abilities`
+- Operational Power = `Attack + Speed + operational keywords + operational abilities`; only this subtotal receives the Operation multiplier
+- Economic Power = `0 / 0.5 / 1 / 1.5` for Cycle None / 1 / 2 / 3
+- Total Power = Static Power + adjusted Operational Power + Economic Power
+- Suggested Construction = `ceil((Total Power - 2) / 2)`
+- Lifetime cost = actual Construction + Operation × expected uses
+
+Battlefield Projection and economy warnings are diagnostics only. Rarity and Asset requirements remain outside the numeric Total Power formula.
+
+Speed contributes `−1 / −0.5 / 0 / +0.5 / +1` for XS / S / M / F / XF. Operation multipliers are `1.35 / 1.15 / 1 / 0.88 / 0.78 / 0.70` for Operation 0–5. The editor reports cost variance as actual Construction minus suggested Construction, using the attached model's aggressive, baseline, conservative, and below-baseline testing flags.
