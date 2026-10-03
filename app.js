@@ -750,8 +750,7 @@
         const assetToken = /^\{[LPSTU]\}$/.test(word);
         const assetCostToken = word.match(/^\{([1-5])\s*,\s*([LPSTU])\}$/);
         const resourceToken = /^\{(?:[0-9]|1[0-9]|20)\}$/.test(word);
-        const colonToken = word === ':';
-        const fontWeight = colonToken ? 640 : (segment.weight || 400);
+        const fontWeight = segment.weight || 400;
         const fontSize = segment.size || 18;
         const fontFamily = segment.fontFamily || 'Arial, sans-serif';
         c.font = `${segment.style || 'normal'} ${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -1141,13 +1140,10 @@
     c.strokeStyle = 'rgba(40, 124, 158, .72)'; c.lineWidth = 1; c.beginPath(); c.moveTo(458, 603); c.lineTo(591, 603); c.stroke();
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-    const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
-    const ruleSegments = ruleParts.length > 1 && !/<[a-z][\s\S]*?>/i.test(card.rules)
-      ? [
-          ...parseRichTextSegments(`${ruleParts[0]} `, { weight: 800, size: 20.5, color: '#080808' }),
-          ...parseRichTextSegments(`(${ruleParts[1]})`, { style: 'italic', weight: 400, size: 21.5, color: '#080808' })
-        ]
-      : parseRichTextSegments(card.rules, { weight: 700, size: 20.5, color: '#080808' });
+    // Ability text stays regular-weight unless the editor explicitly applies
+    // bold through HTML/CSS or Markdown. Punctuation and em-dash phrasing must
+    // not silently change the user's typography.
+    const ruleSegments = parseRichTextSegments(card.rules, { weight: 400, size: 20.5, color: '#080808' });
     drawStyledSegments(c, ruleSegments, 85 + card.rulesX, 653 + card.rulesY, 486, 24, 4);
     if (card.flavor) {
       const flavorSegments = parseRichTextSegments(card.flavor, { style: 'italic', weight: 400, size: 21, color: '#080808' });
