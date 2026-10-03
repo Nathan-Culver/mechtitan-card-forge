@@ -3,7 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 5;
+  const DATA_VERSION = 6;
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -34,6 +34,8 @@
   let toastTimer = null;
 
   const defaults = {
+    projectId: '', template: 'unit-standard', cardKind: 'Unit', previewFace: 'front', rulesAlign: 'left',
+    secondaryName: '', secondaryTraits: '', secondaryRules: '', secondaryFlavor: '', combineEnabled: false, compositePairId: '', customLayers: '',
     name: '', construction: '-', operation: '-', assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
     loadout: '', traits: '', rules: '', flavor: '', speed: '-',
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
@@ -86,6 +88,11 @@
       attack: removableStat(merged.attack, 0, 20, 0), armor: removableStat(merged.armor, 0, 5, 0), structure: removableStat(merged.structure, 1, 30, 1),
       cycle: merged.cycle === '' || merged.cycle == null ? '-' : removableStat(merged.cycle, 1, 3, 1),
       rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
+      template: ['unit-standard','unit-tall-text','unit-extended-art','horizontal','split-combine','flip','double-faced','composite-left','composite-right','custom'].includes(merged.template) ? merged.template : 'unit-standard',
+      cardKind: ['Unit','Command','Mission','Resource'].includes(merged.cardKind) ? merged.cardKind : 'Unit',
+      previewFace: merged.previewFace === 'back' ? 'back' : 'front',
+      rulesAlign: ['left','center','right'].includes(merged.rulesAlign) ? merged.rulesAlign : 'left',
+      combineEnabled: merged.combineEnabled === true || String(merged.combineEnabled).toLowerCase() === 'true',
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
       nameX: clamp(merged.nameX, -100, 100, 0), nameY: clamp(merged.nameY, -50, 50, 0),
       rulesX: clamp(merged.rulesX, -100, 100, 0), rulesY: clamp(merged.rulesY, -100, 100, 0),
@@ -126,6 +133,11 @@
       migrated.rulesX = Number(migrated.rulesX ?? 0); migrated.rulesY = Number(migrated.rulesY ?? 0);
       migrated.flavorX = Number(migrated.flavorX ?? 0); migrated.flavorY = Number(migrated.flavorY ?? 0);
     }
+    if (fromVersion < 6) {
+      migrated.template = migrated.template || 'unit-standard';
+      migrated.cardKind = migrated.cardKind || 'Unit';
+      migrated.rulesAlign = migrated.rulesAlign || 'left';
+    }
     return migrated;
   }
 
@@ -162,7 +174,8 @@
   }
 
   function saveCurrent(showToast = true) {
-    const card = getFormData();
+    const staged = getFormData();
+    const card = normalizeCard(window.MechTitanStudio?.decorateCard?.(staged) || staged);
     const index = cards.findIndex(c => c.id === card.id);
     if (index >= 0) cards[index] = card; else cards.unshift(card);
     currentId = card.id;
@@ -237,7 +250,8 @@
     });
     const zoom = document.querySelector('#zoom');
     document.querySelector('#zoomOut').textContent = `${zoom.value}%`;
-    canvas.style.width = `${Math.round(660 * Number(zoom.value) / 100)}px`;
+    const dimensions = window.MechTitanStudio?.dimensions?.(getFormData()) || { width: W, height: H };
+    canvas.style.width = `${Math.round(dimensions.width * Number(zoom.value) / 100)}px`;
     updateBalance();
   }
 
@@ -825,6 +839,7 @@
   }
 
   function drawCard(target, card, scale = 1, guides = false) {
+    if (window.MechTitanStudio?.drawVariant?.(target, card, scale, guides, artImage)) return;
     const c = target; const t = themeMap[card.theme] || themeMap.titanium;
     c.save(); c.scale(scale, scale); c.clearRect(0, 0, W, H);
     const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#00101e'); bg.addColorStop(.5, '#020609'); bg.addColorStop(1, '#001523'); c.fillStyle = bg; c.fillRect(0, 0, W, H);
@@ -1254,8 +1269,9 @@
   }
 
   function syncMobilePreview() {
-    mobileCtx.clearRect(0, 0, W, H);
-    mobileCtx.drawImage(canvas, 0, 0, W, H);
+    mobileCanvas.width = canvas.width; mobileCanvas.height = canvas.height;
+    mobileCtx.clearRect(0, 0, canvas.width, canvas.height);
+    mobileCtx.drawImage(canvas, 0, 0);
   }
 
   function setStickyPreview(enabled) {
@@ -1266,19 +1282,28 @@
   }
 
   function render() {
-    drawCard(ctx, getFormData(), 1, document.querySelector('#showBleed').checked);
+    const card = getFormData();
+    const dimensions = window.MechTitanStudio?.dimensions?.(card) || { width: W, height: H };
+    if (canvas.width !== dimensions.width || canvas.height !== dimensions.height) { canvas.width = dimensions.width; canvas.height = dimensions.height; }
+    drawCard(ctx, card, 1, document.querySelector('#showBleed').checked);
     syncMobilePreview();
   }
 
   function renderLibrary() {
     const query = document.querySelector('#searchCards').value.toLowerCase();
     const faction = document.querySelector('#filterFaction').value;
-    const factions = [...new Set(cards.map(c => c.faction).filter(Boolean))].sort();
+    const libraryCards = window.MechTitanStudio?.filterCards?.(cards) || cards;
+    const factions = [...new Set(libraryCards.map(c => c.faction).filter(Boolean))].sort();
     const filter = document.querySelector('#filterFaction');
     const old = filter.value; filter.innerHTML = '<option value="">All factions</option>' + factions.map(x => `<option>${escXml(x)}</option>`).join(''); filter.value = old;
-    const shown = cards.filter(c => (!query || `${plainTextFromMarkup(c.name)} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
-    cardList.innerHTML = shown.length ? shown.map(c => { const displayName = plainTextFromMarkup(c.name); return `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0"><input type="checkbox" aria-label="Select ${escXml(displayName)}" ${selected.has(c.id) ? 'checked' : ''}><div class="mini-card"></div><div class="library-meta"><strong>${escXml(displayName)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`; }).join('') : '<p class="hint">No cards match this view.</p>';
+    const shown = libraryCards.filter(c => (!query || `${plainTextFromMarkup(c.name)} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
+    cardList.innerHTML = shown.length ? shown.map(c => { const displayName = plainTextFromMarkup(c.name); return `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0" draggable="true"><input type="checkbox" aria-label="Select ${escXml(displayName)}" ${selected.has(c.id) ? 'checked' : ''}><div class="order-controls"><button type="button" data-move="-1" title="Move up" aria-label="Move ${escXml(displayName)} up">↑</button><button type="button" data-move="1" title="Move down" aria-label="Move ${escXml(displayName)} down">↓</button></div><div class="mini-card"></div><div class="library-meta"><strong>${escXml(displayName)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`; }).join('') : '<p class="hint">No cards match this view.</p>';
     document.querySelector('#selectionCount').textContent = `${selected.size} selected`;
+    const selectAll = document.querySelector('#selectAllCards');
+    const selectedHere = libraryCards.filter(card => selected.has(card.id)).length;
+    selectAll.checked = libraryCards.length > 0 && selectedHere === libraryCards.length;
+    selectAll.indeterminate = selectedHere > 0 && selectedHere < libraryCards.length;
+    selectAll.disabled = libraryCards.length === 0;
   }
 
   function downloadBlob(blob, filename) {
@@ -1317,14 +1342,15 @@
   }
 
   async function renderCardBlob(card, format, dpi) {
-    const factor = dpi / PPI; const out = document.createElement('canvas'); out.width = W * factor; out.height = H * factor;
+    const factor = dpi / PPI; const dimensions = window.MechTitanStudio?.dimensions?.(card) || { width: W, height: H }; const out = document.createElement('canvas'); out.width = dimensions.width * factor; out.height = dimensions.height * factor;
     const outCtx = out.getContext('2d');
     let image = artImage;
     if (card.artData && card.id !== currentId) image = await new Promise(resolve => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => resolve(null); i.src = card.artData; });
     const previous = artImage; artImage = image; drawCard(outCtx, card, factor, false); artImage = previous;
     if (format === 'svg') {
       const png = out.toDataURL('image/png');
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2.75in" height="3.75in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(plainTextFromMarkup(card.name))}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
+      const physical = dimensions.width > dimensions.height ? ['3.75','2.75'] : ['2.75','3.75'];
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${physical[0]}in" height="${physical[1]}in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(plainTextFromMarkup(card.name))}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
       return new Blob([svg], { type: 'image/svg+xml' });
     }
     const raster = await new Promise(resolve => out.toBlob(resolve, format === 'jpeg' ? 'image/jpeg' : 'image/png', .95));
@@ -1442,6 +1468,11 @@
   document.querySelector('#redoBtn').addEventListener('click', () => travelHistory(1));
   document.querySelector('#searchCards').addEventListener('input', renderLibrary);
   document.querySelector('#filterFaction').addEventListener('change', renderLibrary);
+  document.querySelector('#selectAllCards').addEventListener('change', event => {
+    const libraryCards = window.MechTitanStudio?.filterCards?.(cards) || cards;
+    libraryCards.forEach(card => event.target.checked ? selected.add(card.id) : selected.delete(card.id));
+    renderLibrary();
+  });
   cardList.addEventListener('click', event => {
     const item = event.target.closest('.library-card'); if (!item) return; const id = item.dataset.id;
     if (event.target.matches('input[type=checkbox]')) { event.target.checked ? selected.add(id) : selected.delete(id); renderLibrary(); return; }
@@ -1483,4 +1514,11 @@
   setStickyPreview(stickyPreview.checked);
   preloadLayers();
   const initial = loadStore(); setFormData(initial); updateUndoButtons(); registerWebMcp();
+  window.MechTitanForge = {
+    version: DATA_VERSION, defaults: { ...defaults }, normalizeCard, getFormData, setFormData, saveCurrent, persist, render, renderLibrary,
+    renderCardBlob, downloadBlob, toast, slug, plainTextFromMarkup,
+    getCards: () => cards, setCards: next => { cards = next.map(normalizeCard); persist(); renderLibrary(); },
+    getCurrentId: () => currentId, setCurrentId: id => { const card = cards.find(item => item.id === id); if (card) setFormData(card); },
+    createId: uid, getArtImage: () => artImage, selected
+  };
 })();

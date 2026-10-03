@@ -1,0 +1,368 @@
+(() => {
+  'use strict';
+
+  const forge = window.MechTitanForge;
+  if (!forge) return;
+
+  const PROJECT_KEY = 'mechtitan-projects-v1';
+  const PRESET_KEY = 'mechtitan-presets-v1';
+  const REVISION_KEY = 'mechtitan-revisions-v1';
+  const HORIZONTAL = new Set(['horizontal', 'split-combine']);
+  const TWO_SIDED = new Set(['split-combine', 'flip', 'double-faced', 'composite-left', 'composite-right']);
+  const $ = selector => document.querySelector(selector);
+  const safeJson = (value, fallback) => { try { return JSON.parse(value); } catch (_) { return fallback; } };
+  const projectId = () => `project-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const now = () => new Date().toISOString();
+  let projects = [];
+  let activeProjectId = '';
+  let presets = safeJson(localStorage.getItem(PRESET_KEY), []);
+  if (!Array.isArray(presets)) presets = [];
+  let revisions = safeJson(localStorage.getItem(REVISION_KEY), { cards: {}, projects: {} });
+  if (!revisions || typeof revisions !== 'object') revisions = { cards: {}, projects: {} };
+  revisions.cards ||= {}; revisions.projects ||= {};
+  let dragCardId = '';
+  let projectSaveTimer = 0;
+
+  function normalizeProject(raw = {}) {
+    return {
+      id: String(raw.id || projectId()),
+      name: String(raw.name || 'Untitled Set').slice(0, 100),
+      description: String(raw.description || '').slice(0, 2000),
+      type: raw.type === 'deck' ? 'deck' : 'set',
+      coverCardId: String(raw.coverCardId || ''),
+      cardIds: Array.isArray(raw.cardIds) ? [...new Set(raw.cardIds.map(String))] : [],
+      createdAt: raw.createdAt || now(), updatedAt: raw.updatedAt || now()
+    };
+  }
+
+  function loadProjects() {
+    const stored = safeJson(localStorage.getItem(PROJECT_KEY), null);
+    projects = Array.isArray(stored?.projects) ? stored.projects.map(normalizeProject) : [];
+    activeProjectId = stored?.activeProjectId || '';
+    if (!projects.length) {
+      const first = normalizeProject({ name: 'My First Set', type: 'set', cardIds: forge.getCards().map(card => card.id) });
+      projects = [first]; activeProjectId = first.id;
+    }
+    if (!projects.some(project => project.id === activeProjectId)) activeProjectId = projects[0].id;
+    const known = new Set(projects.flatMap(project => project.cardIds));
+    let changed = false;
+    const cards = forge.getCards().map(card => {
+      if (!card.projectId || !projects.some(project => project.id === card.projectId)) {
+        changed = true; known.add(card.id); activeProject().cardIds.push(card.id); return { ...card, projectId: activeProjectId };
+      }
+      const owner = projects.find(project => project.id === card.projectId);
+      if (!owner.cardIds.includes(card.id)) { owner.cardIds.push(card.id); changed = true; }
+      return card;
+    });
+    if (changed) forge.setCards(cards);
+    persistProjects();
+  }
+
+  function activeProject() { return projects.find(project => project.id === activeProjectId) || projects[0]; }
+  function activeCards() {
+    const project = activeProject();
+    const map = new Map(forge.getCards().filter(card => card.projectId === project.id).map(card => [card.id, card]));
+    const ordered = project.cardIds.map(id => map.get(id)).filter(Boolean);
+    map.forEach((card, id) => { if (!project.cardIds.includes(id)) { project.cardIds.push(id); ordered.push(card); } });
+    return ordered;
+  }
+  function persistProjects() { localStorage.setItem(PROJECT_KEY, JSON.stringify({ projects, activeProjectId })); }
+  function persistRevisions() { localStorage.setItem(REVISION_KEY, JSON.stringify(revisions)); }
+  function decorateCard(card) {
+    const project = activeProject();
+    if (!card.projectId) card.projectId = project.id;
+    if (card.projectId === project.id && !project.cardIds.includes(card.id)) { project.cardIds.push(card.id); project.updatedAt = now(); persistProjects(); }
+    return card;
+  }
+  function filterCards(cards) { return activeCards(); }
+  function dimensions(card) { return HORIZONTAL.has(card?.template) ? { width: 900, height: 660 } : { width: 660, height: 900 }; }
+
+  const themeColors = {
+    titanium: ['#06111a', '#17415c', '#52c9ed'], ember: ['#190806', '#612719', '#ee7148'],
+    royal: ['#13091c', '#462762', '#ab7ee7'], verdant: ['#06160e', '#1d5534', '#55c783']
+  };
+  function plain(value) { return String(value || '').replace(/<[^>]*>/g, '').replace(/\*\*|__/g, '').replace(/\*|_/g, '').replace(/\{\s*(?:[0-5]\s*,\s*)?[LPSTUtlpstu]\s*\}/g, '◆').replace(/\{\d+\}/g, '◉'); }
+  function wrap(ctx, text, x, y, width, lineHeight, maxLines = 10, align = 'left') {
+    const words = plain(text).split(/\s+/).filter(Boolean); const lines = []; let line = '';
+    words.forEach(word => { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > width && line) { lines.push(line); line = word; } else line = test; });
+    if (line) lines.push(line);
+    ctx.textAlign = align; const drawX = align === 'center' ? x + width / 2 : align === 'right' ? x + width : x;
+    lines.slice(0, maxLines).forEach((value, index) => ctx.fillText(value, drawX, y + index * lineHeight));
+  }
+  function framePath(ctx, x, y, w, h, cut = 24) {
+    ctx.beginPath(); ctx.moveTo(x + cut, y); ctx.lineTo(x + w - cut, y); ctx.lineTo(x + w, y + cut); ctx.lineTo(x + w, y + h - cut); ctx.lineTo(x + w - cut, y + h); ctx.lineTo(x + cut, y + h); ctx.lineTo(x, y + h - cut); ctx.lineTo(x, y + cut); ctx.closePath();
+  }
+  function drawPanel(ctx, card, x, y, w, h, art, secondary = false, extended = false) {
+    const colors = themeColors[card.theme] || themeColors.titanium;
+    ctx.save(); framePath(ctx, x, y, w, h, Math.min(26, w * .05));
+    const edge = ctx.createLinearGradient(x, y, x + w, y + h); edge.addColorStop(0, colors[2]); edge.addColorStop(.28, colors[0]); edge.addColorStop(.72, colors[1]); edge.addColorStop(1, '#020508'); ctx.fillStyle = edge; ctx.fill();
+    ctx.strokeStyle = '#02070a'; ctx.lineWidth = 12; ctx.stroke(); ctx.strokeStyle = colors[2]; ctx.lineWidth = 2; ctx.stroke();
+    const pad = extended ? 0 : 25; const top = y + 72; const textHeight = card.template === 'unit-tall-text' ? h * .48 : h * .31; const artBottom = y + h - textHeight;
+    ctx.save(); ctx.beginPath(); ctx.rect(x + pad, top, w - pad * 2, artBottom - top); ctx.clip();
+    if (art) {
+      const ratio = Math.max((w - pad * 2) / art.width, (artBottom - top) / art.height) * (Number(card.artScale || 100) / 100);
+      const aw = art.width * ratio, ah = art.height * ratio;
+      ctx.drawImage(art, x + w / 2 - aw / 2 + Number(card.artX || 0), top + (artBottom - top) / 2 - ah / 2 + Number(card.artY || 0), aw, ah);
+    } else {
+      ctx.fillStyle = '#09131d'; ctx.fillRect(x + pad, top, w - pad * 2, artBottom - top);
+      ctx.strokeStyle = `${colors[2]}66`; ctx.lineWidth = 2;
+      for (let sx = x - h; sx < x + w; sx += 45) { ctx.beginPath(); ctx.moveTo(sx, top); ctx.lineTo(sx + h, artBottom); ctx.stroke(); }
+    }
+    ctx.restore();
+    ctx.fillStyle = '#f1f1ed'; ctx.fillRect(x + 26, y + h - textHeight, w - 52, textHeight - 26);
+    ctx.fillStyle = '#050709'; ctx.fillRect(x + 26, y + 18, w - 52, 58);
+    ctx.fillStyle = '#fff'; ctx.font = `900 ${Math.max(18, Math.min(36, w / 15))}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const name = secondary ? card.secondaryName : card.name; ctx.fillText(plain(name) || 'UNTITLED', x + w / 2, y + 47, w - 90);
+    ctx.fillStyle = '#080a0c'; ctx.textBaseline = 'alphabetic'; ctx.font = `${Math.max(15, w / 28)}px Arial`;
+    const rules = secondary ? card.secondaryRules : card.rules; const flavor = secondary ? card.secondaryFlavor : card.flavor;
+    wrap(ctx, rules, x + 44, y + h - textHeight + 38, w - 88, Math.max(19, w / 24), 7, card.rulesAlign || 'left');
+    ctx.font = `italic ${Math.max(13, w / 32)}px Arial`; ctx.fillStyle = '#333'; wrap(ctx, flavor, x + 44, y + h - 70, w - 88, Math.max(16, w / 29), 2, card.rulesAlign || 'left');
+    ctx.font = `700 ${Math.max(12, w / 34)}px Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+    const traits = secondary ? card.secondaryTraits : card.traits; ctx.fillText(plain(traits || card.rarity), x + 42, y + 70, w - 84);
+    ctx.restore();
+  }
+  function drawCustom(ctx, card, width, height) {
+    ctx.fillStyle = '#0a1017'; ctx.fillRect(0, 0, width, height);
+    const layers = safeJson(card.customLayers, []);
+    if (!Array.isArray(layers) || !layers.length) { ctx.fillStyle = '#fff'; ctx.font = '24px Arial'; ctx.textAlign = 'center'; ctx.fillText('Add custom layer JSON in the Style tab', width / 2, height / 2); return; }
+    layers.forEach(layer => {
+      ctx.save(); const x = Number(layer.x || 0), y = Number(layer.y || 0), w = Number(layer.w || 100), h = Number(layer.h || 40);
+      if (layer.type === 'box') { ctx.fillStyle = layer.fill || '#fff'; ctx.fillRect(x, y, w, h); if (layer.stroke) { ctx.strokeStyle = layer.stroke; ctx.lineWidth = Number(layer.lineWidth || 2); ctx.strokeRect(x, y, w, h); } }
+      if (layer.type === 'text') { ctx.fillStyle = layer.color || '#fff'; ctx.font = `${layer.weight || 700} ${Number(layer.size || 24)}px ${layer.font || 'Arial'}`; wrap(ctx, card[layer.field] ?? layer.text ?? '', x, y + Number(layer.size || 24), w, Number(layer.lineHeight || layer.size * 1.2), Number(layer.maxLines || 6), layer.align || 'left'); }
+      ctx.restore();
+    });
+  }
+  function drawVariant(ctx, card, scale, guides, art) {
+    if ((!card.template || card.template === 'unit-standard') && card.previewFace !== 'back') return false;
+    const { width, height } = dimensions(card); ctx.save(); ctx.scale(scale, scale); ctx.clearRect(0, 0, width, height);
+    if ((!card.template || card.template === 'unit-standard') && card.previewFace === 'back') {
+      const colors = themeColors[card.theme] || themeColors.titanium; const gradient = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, width * .7); gradient.addColorStop(0, colors[1]); gradient.addColorStop(.55, colors[0]); gradient.addColorStop(1, '#010305'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height); framePath(ctx, 18, 18, width - 36, height - 36, 38); ctx.strokeStyle = colors[2]; ctx.lineWidth = 8; ctx.stroke(); ctx.strokeStyle = '#d6c49a'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#e8f7ff'; ctx.textAlign = 'center'; ctx.font = '900 58px Arial'; ctx.fillText('MECHTITAN', width / 2, height / 2); ctx.font = '700 22px Arial'; ctx.fillStyle = colors[2]; ctx.fillText('CARD FORGE', width / 2, height / 2 + 38);
+    } else if (card.template === 'custom') drawCustom(ctx, card, width, height);
+    else if (card.template === 'split-combine') {
+      drawPanel(ctx, card, 8, 8, 438, 644, art, false); drawPanel(ctx, card, 454, 8, 438, 644, art, true);
+      ctx.fillStyle = '#000'; ctx.fillRect(420, 292, 60, 76); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 15px Arial'; ctx.fillText(card.combineEnabled ? 'COMBINE' : 'SPLIT', 450, 335);
+    } else if (card.template === 'flip') {
+      drawPanel(ctx, card, 8, 8, 644, 438, art, false); ctx.save(); ctx.translate(660, 900); ctx.rotate(Math.PI); drawPanel(ctx, card, 8, 8, 644, 438, art, true); ctx.restore();
+    } else if (TWO_SIDED.has(card.template) && card.previewFace === 'back') {
+      if (card.template.startsWith('composite')) {
+        const left = card.template === 'composite-left'; const colors = themeColors[card.theme] || themeColors.titanium;
+        ctx.fillStyle = colors[0]; ctx.fillRect(0, 0, width, height); const gradient = ctx.createRadialGradient(left ? width : 0, height / 2, 20, left ? width : 0, height / 2, width); gradient.addColorStop(0, colors[2]); gradient.addColorStop(1, colors[0]); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#fff'; ctx.font = '900 38px Arial'; ctx.textAlign = left ? 'right' : 'left'; ctx.fillText(plain(card.secondaryName || card.name), left ? width - 24 : 24, height / 2); ctx.font = '18px Arial'; ctx.fillText(`COMPOSITE ${left ? 'LEFT' : 'RIGHT'} · ${card.compositePairId || 'UNPAIRED'}`, left ? width - 24 : 24, height / 2 + 40);
+      } else drawPanel(ctx, card, 8, 8, width - 16, height - 16, art, true, card.template === 'unit-extended-art');
+    } else drawPanel(ctx, card, 8, 8, width - 16, height - 16, art, false, card.template === 'unit-extended-art');
+    if (guides) { ctx.save(); ctx.setLineDash([8, 7]); ctx.strokeStyle = '#ff3f6d'; ctx.lineWidth = 2; ctx.strokeRect(30, 30, width - 60, height - 60); ctx.restore(); }
+    ctx.restore(); return true;
+  }
+
+  window.MechTitanStudio = { decorateCard, filterCards, dimensions, drawVariant };
+
+  function balance(card) {
+    const speed = { XS: -1, S: -.5, M: 0, F: .5, XF: 1 }[card.speed];
+    const operation = { 0: 1.35, 1: 1.15, 2: 1, 3: .88, 4: .78, 5: .70 }[card.operation];
+    if ([card.attack, card.armor, card.structure, card.construction, card.operation].some(value => value === '-' || value === '') || speed == null || operation == null) return { state: 'incomplete' };
+    const staticPower = Number(card.armor) * 1.5 + Number(card.structure) * .4 + Number(card.staticKeywordBP || 0) + Number(card.staticAbilityBP || 0);
+    const operational = (Number(card.attack) + speed + Number(card.operationalKeywordBP || 0) + Number(card.operationalAbilityBP || 0)) * operation;
+    const total = staticPower + operational + ({ 1: .5, 2: 1, 3: 1.5 }[card.cycle] || 0);
+    const suggested = Math.max(0, Math.ceil((total - 2) / 2)); const delta = Number(card.construction) - suggested;
+    return { state: Math.abs(delta) <= 1 ? 'balanced' : delta < -1 ? 'under' : 'over', total, suggested, delta };
+  }
+
+  function renderProjects() {
+    const project = activeProject();
+    $('#projectSelect').innerHTML = projects.map(item => `<option value="${item.id}">${escapeHtml(item.name)} · ${item.type}</option>`).join(''); $('#projectSelect').value = project.id;
+    $('#projectName').value = project.name; $('#projectType').value = project.type; $('#projectDescription').value = project.description;
+    const cards = activeCards(); $('#projectCover').innerHTML = '<option value="">None</option>' + cards.map(card => `<option value="${card.id}">${escapeHtml(forge.plainTextFromMarkup(card.name) || 'Untitled card')}</option>`).join(''); $('#projectCover').value = project.coverCardId;
+    const results = cards.map(balance); const counts = results.reduce((sum, item) => { sum[item.state] = (sum[item.state] || 0) + 1; return sum; }, {});
+    const complete = results.filter(item => item.total != null); const average = complete.length ? (complete.reduce((sum, item) => sum + item.total, 0) / complete.length).toFixed(1) : '—';
+    $('#projectStats').innerHTML = `<span><b>${cards.length}</b> cards</span><span class="ok"><b>${counts.balanced || 0}</b> balanced</span><span class="warn"><b>${(counts.under || 0) + (counts.over || 0)}</b> review</span><span><b>${counts.incomplete || 0}</b> incomplete</span><span><b>${average}</b> avg BP</span>`;
+    forge.renderLibrary();
+  }
+  function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
+
+  function scheduleProjectSave() {
+    clearTimeout(projectSaveTimer); projectSaveTimer = setTimeout(() => {
+      const project = activeProject(); const previous = JSON.stringify(project);
+      project.name = $('#projectName').value.trim() || 'Untitled Project'; project.type = $('#projectType').value; project.description = $('#projectDescription').value; project.coverCardId = $('#projectCover').value; project.updatedAt = now();
+      persistProjects(); renderProjects(); if (previous !== JSON.stringify(project)) captureProjectRevision('Project details changed');
+    }, 250);
+  }
+
+  function captureCardRevision(reason = 'Card saved') {
+    const card = forge.getCards().find(item => item.id === forge.getCurrentId()); if (!card) return;
+    const list = revisions.cards[card.id] ||= []; const snapshot = JSON.stringify(card);
+    if (list[0]?.snapshot === snapshot) return;
+    list.unshift({ id: crypto.randomUUID?.() || String(Date.now()), at: now(), reason, snapshot }); revisions.cards[card.id] = list.slice(0, 30); persistRevisions();
+  }
+  function captureProjectRevision(reason = 'Project saved') {
+    const project = activeProject(); const list = revisions.projects[project.id] ||= [];
+    const snapshot = JSON.stringify({ project, cards: activeCards() }); if (list[0]?.snapshot === snapshot) return;
+    list.unshift({ id: crypto.randomUUID?.() || String(Date.now()), at: now(), reason, snapshot }); revisions.projects[project.id] = list.slice(0, 20); persistRevisions();
+  }
+  function compareObjects(before, after) {
+    const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])];
+    return keys.filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key])).map(key => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(short(before?.[key]))}</td><td>${escapeHtml(short(after?.[key]))}</td></tr>`).join('') || '<tr><td colspan="3">No field changes.</td></tr>';
+  }
+  function short(value) { const text = typeof value === 'string' ? value : JSON.stringify(value); return (text || '—').slice(0, 120); }
+
+  function showDialog(title, html) { $('#studioDialogTitle').textContent = title; $('#studioDialogBody').innerHTML = html; $('#studioDialog').showModal(); }
+  function showHistory() {
+    const card = forge.getCards().find(item => item.id === forge.getCurrentId()); const project = activeProject(); const cardList = revisions.cards[card?.id] || []; const projectList = revisions.projects[project.id] || [];
+    showDialog('Version history', `<div class="history-tabs"><button type="button" data-history-tab="card" class="active">Card revisions</button><button type="button" data-history-tab="project">Project revisions</button></div><div id="cardHistory" class="history-list">${historyRows(cardList, 'card')}</div><div id="projectHistory" class="history-list" hidden>${historyRows(projectList, 'project')}</div><div id="revisionCompare"></div>`);
+  }
+  function historyRows(list, type) { return list.length ? list.map(item => `<article><div><strong>${new Date(item.at).toLocaleString()}</strong><span>${escapeHtml(item.reason)}</span></div><button type="button" data-compare-revision="${item.id}" data-revision-type="${type}">Compare</button><button type="button" data-restore-revision="${item.id}" data-revision-type="${type}">Restore</button></article>`).join('') : '<p class="hint">No saved revisions yet.</p>'; }
+  function revisionBy(type, id) { const key = type === 'card' ? forge.getCurrentId() : activeProjectId; return (revisions[`${type}s`][key] || []).find(item => item.id === id); }
+  function restoreRevision(type, item) {
+    if (!item || !confirm(`Restore this ${type} revision? The current version will be retained in history.`)) return;
+    if (type === 'card') { captureCardRevision('Before restore'); const restored = JSON.parse(item.snapshot); const cards = forge.getCards().map(card => card.id === restored.id ? restored : card); forge.setCards(cards); forge.setFormData(restored); captureCardRevision('Restored revision'); }
+    else { captureProjectRevision('Before restore'); const data = JSON.parse(item.snapshot); projects = projects.map(project => project.id === data.project.id ? normalizeProject(data.project) : project); const other = forge.getCards().filter(card => card.projectId !== data.project.id); forge.setCards([...other, ...data.cards]); persistProjects(); renderProjects(); captureProjectRevision('Restored revision'); }
+    $('#studioDialog').close(); forge.toast('Earlier version restored');
+  }
+
+  function insertAtSelection(textarea, before, after = '', placeholder = 'text') {
+    const start = textarea.selectionStart, end = textarea.selectionEnd; const chosen = textarea.value.slice(start, end) || placeholder;
+    textarea.setRangeText(`${before}${chosen}${after}`, start, end, 'end'); textarea.dispatchEvent(new Event('input', { bubbles: true })); textarea.focus();
+  }
+  function setupToolbar() {
+    const textarea = $('#rules');
+    document.querySelectorAll('[data-format]').forEach(button => button.addEventListener('click', () => insertAtSelection(textarea, button.dataset.format === 'bold' ? '<strong>' : '<em>', button.dataset.format === 'bold' ? '</strong>' : '</em>')));
+    document.querySelectorAll('[data-token]').forEach(button => button.addEventListener('click', () => insertAtSelection(textarea, button.dataset.token, '', '')));
+    $('#insertAssetBtn').addEventListener('click', () => { const value = $('#toolbarAssetValue').value, type = $('#toolbarAssetType').value; insertAtSelection(textarea, value ? `{${value}, ${type}}` : `{${type}}`, '', ''); });
+    $('#toolbarColor').addEventListener('change', event => insertAtSelection(textarea, `<span style="color:${event.target.value}">`, '</span>'));
+    $('#toolbarSize').addEventListener('change', event => { if (event.target.value) insertAtSelection(textarea, `<span style="font-size:${event.target.value}">`, '</span>'); event.target.value = ''; });
+  }
+
+  function updateTemplateUi() {
+    const card = forge.getFormData(); const dual = TWO_SIDED.has(card.template);
+    $('#secondaryFaceFields').hidden = !dual; $('#faceControls').hidden = !dual || card.template === 'split-combine' || card.template === 'flip'; $('#customLayerEditor').hidden = card.template !== 'custom';
+    $('#frontFaceBtn').classList.toggle('active', card.previewFace !== 'back'); $('#backFaceBtn').classList.toggle('active', card.previewFace === 'back');
+    document.querySelectorAll('[name="operation"], [name="speed"], [name="attack"], [name="armor"], [name="structure"]').forEach(input => input.closest('.field')?.classList.toggle('conditional-hidden', card.cardKind !== 'Unit'));
+    const horizontal = HORIZONTAL.has(card.template); $('#dimensionsLabel').textContent = horizontal ? '3.75 × 2.75 in with bleed' : '2.75 × 3.75 in with bleed';
+  }
+
+  function presetData() { const card = forge.getFormData(); return Object.fromEntries(['theme','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY','uppercaseTitle','faction','copyright','rulesAlign','template','customLayers'].map(key => [key, card[key]])); }
+  function renderPresets() { $('#presetSelect').innerHTML = '<option value="">Choose a preset</option>' + presets.map(item => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join(''); }
+
+  async function pack(text) {
+    if (typeof CompressionStream === 'function') { const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip')); return { codec: 'gz', bytes: new Uint8Array(await new Response(stream).arrayBuffer()) }; }
+    return { codec: 'raw', bytes: new TextEncoder().encode(text) };
+  }
+  async function unpack(codec, bytes) {
+    if (codec === 'gz') { if (typeof DecompressionStream !== 'function') throw new Error('This browser cannot decompress the shared project'); const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')); return new Response(stream).text(); }
+    return new TextDecoder().decode(bytes);
+  }
+  function b64(bytes) { let binary = ''; bytes.forEach(byte => binary += String.fromCharCode(byte)); return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64(text) { const normalized = text.replace(/-/g, '+').replace(/_/g, '/'); const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4)); return Uint8Array.from(binary, char => char.charCodeAt(0)); }
+  async function keyFromPassphrase(passphrase, salt, usage) { const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']); return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, usage); }
+  function sharePayload(scope = 'project') {
+    if (scope === 'card') { const card = forge.getCards().find(item => item.id === forge.getCurrentId()) || forge.getFormData(); return { app: 'MechTitan Card Forge', version: forge.version, sharedAt: now(), project: normalizeProject({ name: `${forge.plainTextFromMarkup(card.name) || 'Shared card'} link`, cardIds: [card.id], coverCardId: card.id }), cards: [card] }; }
+    return { app: 'MechTitan Card Forge', version: forge.version, sharedAt: now(), project: activeProject(), cards: activeCards() };
+  }
+  async function makeShareLink(privateLink, scope = 'project') {
+    const packed = await pack(JSON.stringify(sharePayload(scope))); let fragment;
+    if (privateLink) { const pass = prompt('Create a passphrase for this private link. It will not be included in the URL.'); if (!pass) return; const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)); const key = await keyFromPassphrase(pass, salt, ['encrypt']); const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed.bytes)); fragment = `share=private.${packed.codec}.${b64(salt)}.${b64(iv)}.${b64(encrypted)}`; }
+    else fragment = `share=public.${packed.codec}.${b64(packed.bytes)}`;
+    const link = `${location.origin}${location.pathname}#${fragment}`; await navigator.clipboard.writeText(link).catch(() => {});
+    const warning = link.length > 100000 ? '<p class="warning">This link is very large because artwork is embedded. Some messaging services may truncate it; export the project JSON for reliable transfer.</p>' : '';
+    showDialog(`${privateLink ? 'Private' : 'Public'} ${scope} link`, `${warning}<p>Anyone with this link${privateLink ? ' and the passphrase' : ''} can import this ${scope}. The link is unlisted; this static app does not publish a searchable cloud directory.</p><textarea class="share-link" readonly>${escapeHtml(link)}</textarea><button type="button" id="copyShareLink">Copy link</button>`);
+    $('#copyShareLink').addEventListener('click', () => navigator.clipboard.writeText(link).then(() => forge.toast('Share link copied')));
+  }
+  async function importShareLink(value, automatic = false) {
+    try {
+      const hash = value.includes('#') ? value.slice(value.indexOf('#') + 1) : value.replace(/^#/, ''); if (!hash.startsWith('share=')) throw new Error('No MechTitan share data found');
+      const parts = hash.slice(6).split('.'); let compressed;
+      const codec = parts[1];
+      if (parts[0] === 'private') { const pass = prompt('Enter the passphrase for this private project link.'); if (!pass) return; const salt = unb64(parts[2]), iv = unb64(parts[3]), encrypted = unb64(parts[4]); const key = await keyFromPassphrase(pass, salt, ['decrypt']); compressed = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted)); }
+      else compressed = unb64(parts[2]);
+      const data = JSON.parse(await unpack(codec, compressed)); if (!data.project || !Array.isArray(data.cards)) throw new Error('Project data is incomplete');
+      const importedProject = normalizeProject({ ...data.project, id: projectId(), name: `${data.project.name} (imported)` }); const mapped = data.cards.map(card => ({ ...card, id: forge.createId(), projectId: importedProject.id })); importedProject.cardIds = mapped.map(card => card.id); projects.push(importedProject); activeProjectId = importedProject.id; forge.setCards([...forge.getCards(), ...mapped]); persistProjects(); renderProjects(); if (mapped[0]) forge.setFormData(mapped[0]); history.replaceState(null, '', location.pathname + location.search); captureProjectRevision('Imported shared project'); forge.toast(`Imported ${mapped.length} cards`);
+    } catch (error) { if (!automatic || confirm(`Could not import this share link: ${error.message}`)) forge.toast(`Import failed: ${error.message}`); }
+  }
+
+  async function cardImage(card, dpi = 144) { const blob = await forge.renderCardBlob(card, 'png', dpi); return createImageBitmap(blob); }
+  function projectCardList() { const selected = [...forge.selected]; const cards = activeCards(); return selected.length ? cards.filter(card => selected.includes(card.id)) : cards; }
+  async function exportPrintPdf() {
+    const paper = $('#printPaper').value, landscape = $('#printOrientation').value === 'landscape', gutter = Number($('#printGutter').value || .125), crop = $('#printCrop').checked, duplex = $('#printDuplex').checked;
+    const sizes = { letter: [8.5, 11], a4: [8.2677, 11.6929] }; let [pw, ph] = sizes[paper]; if (landscape) [pw, ph] = [ph, pw];
+    const cards = projectCardList(); if (!cards.length) return forge.toast('No cards in this project');
+    const margin = .25, cw = 2.75, ch = 3.75, cols = Math.max(1, Math.floor((pw - margin * 2 + gutter) / (cw + gutter))), rows = Math.max(1, Math.floor((ph - margin * 2 + gutter) / (ch + gutter))), perPage = cols * rows;
+    const pages = [];
+    for (let offset = 0; offset < cards.length; offset += perPage) { const batch = cards.slice(offset, offset + perPage); pages.push({ cards: batch, backs: false }); if (duplex) pages.push({ cards: batch, backs: true }); }
+    const pdf = await buildRasterPdf(pages, { pw, ph, margin, cw, ch, cols, gutter, crop }); forge.downloadBlob(pdf, `${forge.slug(activeProject().name)}-print-sheet.pdf`); forge.toast('Print-sheet PDF exported');
+  }
+  const encode = value => new TextEncoder().encode(value);
+  function concatBytes(parts) { const size = parts.reduce((sum, part) => sum + part.length, 0), output = new Uint8Array(size); let offset = 0; parts.forEach(part => { output.set(part, offset); offset += part.length; }); return output; }
+  function pdfDocument(configure) {
+    const objects = [null]; const add = value => (objects.push(value), objects.length - 1); const catalog = add(''), pages = add(''); configure({ add, catalog, pages, objects });
+    const chunks = [encode('%PDF-1.4\n%MTFG\n')], offsets = [0]; let length = chunks[0].length;
+    for (let id = 1; id < objects.length; id++) { offsets[id] = length; const value = objects[id]; let body; if (value?.bytes) body = concatBytes([encode(`${id} 0 obj\n${value.dict.replace('{length}', value.bytes.length)}\nstream\n`), value.bytes, encode('\nendstream\nendobj\n')]); else body = encode(`${id} 0 obj\n${value}\nendobj\n`); chunks.push(body); length += body.length; }
+    const xrefAt = length; const xref = [`xref\n0 ${objects.length}\n0000000000 65535 f \n`]; for (let id = 1; id < objects.length; id++) xref.push(`${String(offsets[id]).padStart(10, '0')} 00000 n \n`); xref.push(`trailer\n<< /Size ${objects.length} /Root ${catalog} 0 R >>\nstartxref\n${xrefAt}\n%%EOF`); chunks.push(encode(xref.join(''))); return new Blob([concatBytes(chunks)], { type: 'application/pdf' });
+  }
+  async function buildRasterPdf(pageSpecs, options) {
+    const { pw, ph, margin, cw, ch, cols, gutter, crop } = options; const prepared = [];
+    for (const spec of pageSpecs) { const images = []; for (let index = 0; index < spec.cards.length; index++) { const source = spec.backs ? { ...spec.cards[index], previewFace: 'back' } : spec.cards[index]; const dims = dimensions(source); const blob = await forge.renderCardBlob(source, 'jpeg', 144); const bytes = new Uint8Array(await blob.arrayBuffer()); const col = spec.backs ? cols - 1 - (index % cols) : index % cols, row = Math.floor(index / cols); const cardW = dims.width / 240, cardH = dims.height / 240, fit = Math.min(cw / cardW, ch / cardH); const w = cardW * fit, h = cardH * fit; images.push({ bytes, pxW: Math.round(dims.width * .6), pxH: Math.round(dims.height * .6), x: margin + col * (cw + gutter) + (cw - w) / 2, y: margin + row * (ch + gutter) + (ch - h) / 2, w, h }); } prepared.push(images); }
+    return pdfDocument(({ add, catalog, pages, objects }) => { const pageIds = []; prepared.forEach(images => { const names = [], commands = []; images.forEach((image, index) => { const id = add({ dict: `<< /Type /XObject /Subtype /Image /Width ${image.pxW} /Height ${image.pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {length} >>`, bytes: image.bytes }); const name = `Im${index + 1}`; names.push(`/${name} ${id} 0 R`); const x = image.x * 72, y = (ph - image.y - image.h) * 72, w = image.w * 72, h = image.h * 72; commands.push(`q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /${name} Do Q`); if (crop) commands.push(cropCommands(x, y, w, h)); }); const content = encode(commands.join('\n')); const contentId = add({ dict: '<< /Length {length} >>', bytes: content }); const pageId = add(`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 ${(pw * 72).toFixed(2)} ${(ph * 72).toFixed(2)}] /Resources << /XObject << ${names.join(' ')} >> >> /Contents ${contentId} 0 R >>`); pageIds.push(pageId); }); objects[catalog] = `<< /Type /Catalog /Pages ${pages} 0 R >>`; objects[pages] = `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] >>`; });
+  }
+  function cropCommands(x, y, w, h) { const m = 6, s = .5; return `q 0 G 0.4 w ${x-m} ${y} m ${x-s} ${y} l S ${x} ${y-m} m ${x} ${y-s} l S ${x+w+s} ${y} m ${x+w+m} ${y} l S ${x+w} ${y-m} m ${x+w} ${y-s} l S ${x-m} ${y+h} m ${x-s} ${y+h} l S ${x} ${y+h+s} m ${x} ${y+h+m} l S ${x+w+s} ${y+h} m ${x+w+m} ${y+h} l S ${x+w} ${y+h+s} m ${x+w} ${y+h+m} l S Q`; }
+  function showPrintDialog() { showDialog('Print & play', `<div class="grid-2"><div class="field"><label>Paper size</label><select id="printPaper"><option value="letter">US Letter</option><option value="a4">A4</option></select></div><div class="field"><label>Orientation</label><select id="printOrientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></div><div class="field"><label>Gutter (inches)</label><input id="printGutter" type="number" min="0" max="1" step="0.025" value="0.125"></div></div><label class="toggle-row"><input id="printCrop" type="checkbox" checked><span>Crop marks</span></label><label class="toggle-row"><input id="printDuplex" type="checkbox"><span>Duplex fronts and backs</span></label><button id="createPrintPdf" type="button" class="primary wide">Export multi-card PDF</button>`); $('#createPrintPdf').addEventListener('click', exportPrintPdf); }
+  async function exportTts() { const cards = projectCardList(); if (!cards.length) return forge.toast('No cards to export'); const cols = Math.min(10, Math.max(1, cards.length)), rows = Math.ceil(cards.length / cols), cellW = 330, cellH = 450, sheet = document.createElement('canvas'); sheet.width = cols * cellW; sheet.height = rows * cellH; const ctx = sheet.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, sheet.width, sheet.height); for (let i = 0; i < cards.length; i++) { const image = await cardImage(cards[i], 120); ctx.drawImage(image, (i % cols) * cellW, Math.floor(i / cols) * cellH, cellW, cellH); } sheet.toBlob(blob => forge.downloadBlob(blob, `${forge.slug(activeProject().name)}-tts-${cols}x${rows}.png`), 'image/png'); forge.toast('Tabletop Simulator sheet exported'); }
+  function exportArena() { const counts = new Map(); activeCards().forEach(card => { const name = forge.plainTextFromMarkup(card.name) || 'Untitled Card'; counts.set(name, (counts.get(name) || 0) + 1); }); const text = [...counts].map(([name,count]) => `${count} ${name}`).join('\n'); forge.downloadBlob(new Blob([text], { type: 'text/plain' }), `${forge.slug(activeProject().name)}-tcg-arena.txt`); }
+  function exportNativeDeck() { const project = activeProject(); const payload = { schema: 'mechtitan.deck.v1', exportedAt: now(), project, cards: activeCards(), entries: activeCards().map((card, index) => ({ order: index + 1, cardId: card.id, count: 1 })) }; forge.downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `${forge.slug(project.name)}.mechtitan-deck.json`); }
+  function pdfEscape(value) { return String(value).replace(/[^\x20-\x7e]/g, '?').replace(/([\\()])/g, '\\$1'); }
+  function exportDeckSheet() { const project = activeProject(), cards = activeCards(), textPages = [[]]; cards.forEach((card, index) => { if (textPages.at(-1).length >= 42) textPages.push([]); const result = balance(card); textPages.at(-1).push(`${index + 1}. ${forge.plainTextFromMarkup(card.name) || 'Untitled'} | ${card.cardKind} | C${card.construction}/O${card.operation}/Y${card.cycle} | ${result.total?.toFixed(1) || '-'} BP`); }); const pdf = pdfDocument(({ add, catalog, pages, objects }) => { const font = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'), pageIds = []; textPages.forEach((lines, pageIndex) => { const commands = [`BT /F1 18 Tf 42 752 Td (${pdfEscape(pageIndex ? `${project.name} - continued` : project.name)}) Tj ET`, 'BT /F1 9 Tf 42 724 Td']; lines.forEach((line, index) => commands.push(`${index ? '0 -16 Td ' : ''}(${pdfEscape(line)}) Tj`)); commands.push('ET'); const content = encode(commands.join('\n')); const contentId = add({ dict: '<< /Length {length} >>', bytes: content }); pageIds.push(add(`<< /Type /Page /Parent ${pages} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${font} 0 R >> >> /Contents ${contentId} 0 R >>`)); }); objects[catalog] = `<< /Type /Catalog /Pages ${pages} 0 R >>`; objects[pages] = `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] >>`; }); forge.downloadBlob(pdf, `${forge.slug(project.name)}-deck-sheet.pdf`); }
+
+  function bindEvents() {
+    $('#projectSelect').addEventListener('change', event => { activeProjectId = event.target.value; persistProjects(); const first = activeCards()[0]; if (first) forge.setFormData(first); renderProjects(); });
+    ['#projectName','#projectType','#projectDescription','#projectCover'].forEach(selector => $(selector).addEventListener('input', scheduleProjectSave));
+    $('#newProjectBtn').addEventListener('click', () => { const name = prompt('Name this set or deck:', 'Untitled Set'); if (!name) return; const type = confirm('Create this as a deck? Choose Cancel for a card set.') ? 'deck' : 'set'; const project = normalizeProject({ name, type }); projects.push(project); activeProjectId = project.id; persistProjects(); renderProjects(); const id = forge.createId(); forge.setFormData({ ...forge.defaults, id, projectId: project.id }); captureProjectRevision('Project created'); });
+    $('#newCardBtn').addEventListener('click', () => { const card = forge.getFormData(); if (!card.projectId) forge.setFormData({ ...card, projectId: activeProjectId }, false); });
+    $('#saveBtn').addEventListener('click', () => { captureCardRevision(); captureProjectRevision('Card saved'); renderProjects(); });
+    $('#deleteBtn').addEventListener('click', () => setTimeout(() => {
+      projects.forEach(project => { project.cardIds = project.cardIds.filter(id => forge.getCards().some(card => card.id === id)); });
+      let remaining = activeCards();
+      if (!remaining.length) {
+        const blank = { ...forge.defaults, id: forge.createId(), projectId: activeProjectId };
+        activeProject().cardIds.push(blank.id); forge.setCards([...forge.getCards(), blank]); forge.setFormData(blank); remaining = [blank];
+      } else if (!remaining.some(card => card.id === forge.getCurrentId())) forge.setFormData(remaining[0]);
+      persistProjects(); captureProjectRevision('Cards deleted'); renderProjects();
+    }, 0));
+    $('#template').addEventListener('change', () => { updateTemplateUi(); forge.render(); }); $('#cardKind').addEventListener('change', updateTemplateUi);
+    $('#frontFaceBtn').addEventListener('click', () => { $('#previewFace').value = 'front'; updateTemplateUi(); forge.render(); }); $('#backFaceBtn').addEventListener('click', () => { $('#previewFace').value = 'back'; updateTemplateUi(); forge.render(); });
+    $('#cardForm').addEventListener('input', event => { if (event.target.id === 'template' || event.target.id === 'cardKind') updateTemplateUi(); });
+    $('#shareProjectBtn').addEventListener('click', () => showDialog('Share card or project', `<p>Public links are unlisted and self-contained. Private links encrypt the contents with a passphrase.</p><div class="share-options"><button id="publicShare" type="button" class="primary">Public project link</button><button id="privateShare" type="button">Private project link</button><button id="publicCardShare" type="button">Public card link</button><button id="privateCardShare" type="button">Private card link</button></div>`));
+    $('#studioDialog').addEventListener('click', event => {
+      if (event.target.id === 'publicShare') makeShareLink(false); if (event.target.id === 'privateShare') makeShareLink(true);
+      if (event.target.id === 'publicCardShare') makeShareLink(false, 'card'); if (event.target.id === 'privateCardShare') makeShareLink(true, 'card');
+      if (event.target.matches('[data-history-tab]')) { document.querySelectorAll('[data-history-tab]').forEach(button => button.classList.toggle('active', button === event.target)); $('#cardHistory').hidden = event.target.dataset.historyTab !== 'card'; $('#projectHistory').hidden = event.target.dataset.historyTab !== 'project'; }
+      if (event.target.matches('[data-compare-revision]')) { const item = revisionBy(event.target.dataset.revisionType, event.target.dataset.compareRevision); const before = item && JSON.parse(item.snapshot); const current = event.target.dataset.revisionType === 'card' ? forge.getCards().find(card => card.id === forge.getCurrentId()) : { project: activeProject(), cards: activeCards() }; $('#revisionCompare').innerHTML = `<h3>Changes since revision</h3><div class="compare-table-wrap"><table><thead><tr><th>Field</th><th>Earlier</th><th>Current</th></tr></thead><tbody>${compareObjects(before, current)}</tbody></table></div>`; }
+      if (event.target.matches('[data-restore-revision]')) restoreRevision(event.target.dataset.revisionType, revisionBy(event.target.dataset.revisionType, event.target.dataset.restoreRevision));
+    });
+    $('#importLinkBtn').addEventListener('click', () => { const value = prompt('Paste a MechTitan public or private project link:'); if (value) importShareLink(value); });
+    $('#projectHistoryBtn').addEventListener('click', showHistory); $('#printPlayBtn').addEventListener('click', showPrintDialog);
+    $('#savePresetBtn').addEventListener('click', () => { const name = prompt('Preset name:'); if (!name) return; presets.push({ id: projectId(), name, values: presetData() }); localStorage.setItem(PRESET_KEY, JSON.stringify(presets)); renderPresets(); forge.toast('Style preset saved'); });
+    $('#applyPresetBtn').addEventListener('click', () => { const preset = presets.find(item => item.id === $('#presetSelect').value); if (!preset) return forge.toast('Choose a preset first'); forge.setFormData({ ...forge.getFormData(), ...preset.values }); updateTemplateUi(); forge.toast('Preset applied'); });
+    $('#deletePresetBtn').addEventListener('click', () => { const id = $('#presetSelect').value; if (!id) return; presets = presets.filter(item => item.id !== id); localStorage.setItem(PRESET_KEY, JSON.stringify(presets)); renderPresets(); });
+    $('#exportTtsBtn').addEventListener('click', exportTts); $('#exportArenaBtn').addEventListener('click', exportArena); $('#exportDeckSheetBtn').addEventListener('click', exportDeckSheet); $('#exportNativeDeckBtn').addEventListener('click', exportNativeDeck);
+    $('#exportProjectBtn').addEventListener('click', event => { event.stopImmediatePropagation(); const payload = { app: 'MechTitan Card Forge', version: forge.version, exportedAt: now(), projects, activeProjectId, cards: forge.getCards() }; forge.downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `${forge.slug(activeProject().name)}-forge-project.json`); forge.toast('All sets and decks exported'); }, true);
+    $('#projectFile').addEventListener('change', event => {
+      const file = event.target.files?.[0]; if (!file) return; event.stopImmediatePropagation();
+      file.text().then(text => {
+        const data = JSON.parse(text);
+        const incomingCards = Array.isArray(data) ? data : (Array.isArray(data.cards) ? data.cards : []);
+        if (!incomingCards.length) throw new Error('No cards found');
+        const incomingProjects = Array.isArray(data.projects) ? data.projects.map(normalizeProject) : [normalizeProject({ name: `${file.name.replace(/\.json$/i, '')} (imported)`, cardIds: incomingCards.map(card => card.id) })];
+        const projectMap = new Map(incomingProjects.map(project => [project.id, projectId()])); const cardMap = new Map(incomingCards.map(card => [card.id, forge.createId()]));
+        incomingProjects.forEach(project => { project.id = projectMap.get(project.id); project.cardIds = project.cardIds.map(id => cardMap.get(id)).filter(Boolean); project.coverCardId = cardMap.get(project.coverCardId) || ''; project.name += ' (imported)'; });
+        const cards = incomingCards.map(card => ({ ...card, id: cardMap.get(card.id), projectId: projectMap.get(card.projectId) || incomingProjects[0]?.id }));
+        projects.push(...incomingProjects); activeProjectId = incomingProjects[0]?.id || activeProjectId; forge.setCards([...forge.getCards(), ...cards]); persistProjects(); renderProjects(); if (cards[0]) forge.setFormData(cards[0]); forge.toast(`Imported ${incomingProjects.length} projects`);
+      }).catch(error => { forge.toast(`Could not import project: ${error.message}`); });
+    }, true);
+    $('#cardList').addEventListener('dragstart', event => { const card = event.target.closest('.library-card'); if (card) { dragCardId = card.dataset.id; event.dataTransfer.effectAllowed = 'move'; } });
+    $('#cardList').addEventListener('dragover', event => { if (event.target.closest('.library-card')) event.preventDefault(); });
+    $('#cardList').addEventListener('drop', event => { const target = event.target.closest('.library-card'); if (!target || !dragCardId || target.dataset.id === dragCardId) return; event.preventDefault(); const ids = activeProject().cardIds, from = ids.indexOf(dragCardId), to = ids.indexOf(target.dataset.id); if (from >= 0 && to >= 0) { ids.splice(to, 0, ids.splice(from, 1)[0]); persistProjects(); captureProjectRevision('Card order changed'); renderProjects(); } dragCardId = ''; });
+    $('#cardList').addEventListener('click', event => { const button = event.target.closest('[data-move]'); if (!button) return; event.preventDefault(); event.stopImmediatePropagation(); const id = button.closest('.library-card')?.dataset.id, ids = activeProject().cardIds, from = ids.indexOf(id), to = Math.max(0, Math.min(ids.length - 1, from + Number(button.dataset.move))); if (from >= 0 && to !== from) { ids.splice(to, 0, ids.splice(from, 1)[0]); persistProjects(); captureProjectRevision('Card order changed'); renderProjects(); } }, true);
+    setupToolbar();
+  }
+
+  loadProjects(); bindEvents(); renderPresets(); renderProjects(); updateTemplateUi(); forge.render();
+  if (location.hash.startsWith('#share=')) setTimeout(() => { if (confirm('This link contains a shared MechTitan project. Import it into this browser?')) importShareLink(location.hash, true); }, 150);
+})();

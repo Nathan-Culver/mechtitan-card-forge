@@ -6,9 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261002-1">
+  <link rel="stylesheet" href="styles.css?v=20261003-2">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261002-1"></script>
+  <script defer src="app.js?v=20261003-2"></script>
+  <script defer src="studio.js?v=20261003-2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -50,7 +51,13 @@
       </div>
 
       <form id="cardForm" autocomplete="off">
+        <input id="previewFace" name="previewFace" type="hidden" value="front">
         <section class="tab-page active" data-page="content">
+          <div class="grid-2 template-row">
+            <div class="field"><label for="cardKind">Card kind</label><select id="cardKind" name="cardKind"><option>Unit</option><option>Command</option><option>Mission</option><option>Resource</option></select></div>
+            <div class="field"><label for="template">Frame template</label><select id="template" name="template"><option value="unit-standard">Standard portrait</option><option value="unit-tall-text">Tall text box</option><option value="unit-extended-art">Extended art</option><option value="horizontal">Horizontal</option><option value="split-combine">Horizontal split / Combine</option><option value="flip">Flip</option><option value="double-faced">Double-faced</option><option value="composite-left">Composite back — left half</option><option value="composite-right">Composite back — right half</option><option value="custom">Custom layers</option></select></div>
+          </div>
+          <div id="faceControls" class="face-controls" hidden><button id="frontFaceBtn" type="button" class="active">Front / top</button><button id="backFaceBtn" type="button">Back / bottom</button></div>
           <section id="balancePanel" class="balance-panel" data-state="incomplete" aria-live="polite">
             <div class="balance-summary">
               <div><span class="eyebrow">POWER RATING BALANCE</span><strong id="balanceVerdict">Add stats to calculate</strong></div>
@@ -99,7 +106,17 @@
           <div class="field full"><label for="traits">Types / Subtypes <span>Rarity displays first</span></label><input id="traits" name="traits" maxlength="80" placeholder="Wolf • Clan • Artillery • Mech"><small class="field-hint">Example card order: Uncommon • Wolf • Clan • Artillery • Mech</small></div>
           <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox"><span>Show Tags box</span></label>
           <div class="field full"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None" selected>None (0 bolts)</option></select></div>
-          <div class="field full"><label for="rules">Rules text · HTML / inline CSS / Markdown · {t} Tap · {L}/{P}/{S}/{T}/{U} Assets · {1, L}–{5, U} Asset costs · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
+          <div class="field full"><label for="rules">Rules text · HTML / inline CSS / Markdown · {t} Tap · {L}/{P}/{S}/{T}/{U} Assets · {1, L}–{5, U} Asset costs · {0}–{20} Resource</label>
+            <div class="format-toolbar" role="toolbar" aria-label="Rules text formatting">
+              <button type="button" data-format="bold" title="Bold"><b>B</b></button><button type="button" data-format="italic" title="Italic"><i>I</i></button>
+              <button type="button" data-token="{t}" title="Tap symbol">↻</button><button type="button" data-token="{1}" title="Resource symbol">R</button>
+              <select id="toolbarAssetValue" aria-label="Asset value"><option value="">No number</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+              <select id="toolbarAssetType" aria-label="Asset type"><option>L</option><option>P</option><option>S</option><option>T</option><option>U</option></select><button id="insertAssetBtn" type="button">Asset</button>
+              <input id="toolbarColor" type="color" value="#c43838" title="Text color" aria-label="Text color"><select id="toolbarSize" aria-label="Text size"><option value="">Size</option><option value="14px">Small</option><option value="18px">Normal</option><option value="24px">Large</option><option value="32px">Extra large</option></select>
+              <select id="rulesAlign" name="rulesAlign" aria-label="Rules alignment"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+            </div>
+            <textarea id="rules" name="rules" rows="4"></textarea>
+          </div>
           <div class="field full"><label for="flavor">Flavor text · HTML / inline CSS / Markdown</label><textarea id="flavor" name="flavor" rows="3"></textarea></div>
           <p class="field-hint">Safe text styling supports standard inline tags and styles such as color, background-color, font-size, font-family, font-weight, font-style, text-decoration, and letter-spacing. Scripts and embedded media are ignored.</p>
           <div class="grid-3">
@@ -112,6 +129,15 @@
             <div class="field"><label for="faction">Faction</label><input id="faction" name="faction" value="Clan Wolf"></div>
             <div class="field"><label for="artist">Artist credit</label><input id="artist" name="artist" placeholder="Artist name"></div>
           </div>
+          <section id="secondaryFaceFields" class="secondary-face-fields" hidden>
+            <h3>Second half / back face</h3>
+            <div class="field full"><label for="secondaryName">Name</label><input id="secondaryName" name="secondaryName"></div>
+            <div class="field full"><label for="secondaryTraits">Types / Subtypes</label><input id="secondaryTraits" name="secondaryTraits"></div>
+            <div class="field full"><label for="secondaryRules">Rules text</label><textarea id="secondaryRules" name="secondaryRules" rows="4"></textarea></div>
+            <div class="field full"><label for="secondaryFlavor">Flavor text</label><textarea id="secondaryFlavor" name="secondaryFlavor" rows="2"></textarea></div>
+            <label class="toggle-row"><input id="combineEnabled" name="combineEnabled" type="checkbox"><span>Combine — both halves may be played together</span></label>
+            <div class="field full"><label for="compositePairId">Composite pair ID</label><input id="compositePairId" name="compositePairId" placeholder="e.g. leviathan-alpha"></div>
+          </section>
           <div class="field full"><label for="copyright">Copyright / legal line</label><input id="copyright" name="copyright"></div>
           <div class="grid-2">
             <div class="field"><label for="setCode">Set code</label><input id="setCode" name="setCode" maxlength="8"></div>
@@ -149,6 +175,8 @@
           <label class="toggle-row"><input id="showBleed" type="checkbox" checked><span>Show trim and bleed guides</span></label>
           <label class="toggle-row"><input id="uppercaseTitle" name="uppercaseTitle" type="checkbox"><span>Uppercase card title</span></label>
           <div class="spec-card"><strong>Print specification</strong><span>Trim: 2.5 × 3.5 in</span><span>Bleed: ⅛ in on every edge</span><span>Export: 600 or 1,200 DPI</span></div>
+          <section class="preset-box"><h3>Reusable style presets</h3><div class="button-row"><select id="presetSelect" aria-label="Saved preset"><option value="">Choose a preset</option></select><button id="applyPresetBtn" type="button">Apply</button></div><div class="button-row"><button id="savePresetBtn" type="button">Save current style</button><button id="deletePresetBtn" type="button" class="danger">Delete</button></div></section>
+          <section id="customLayerEditor" class="custom-layer-editor" hidden><div class="field"><label for="customLayers">Advanced component layers and bounds (JSON)</label><textarea id="customLayers" name="customLayers" rows="9" spellcheck="false" placeholder='[{"type":"text","field":"name","x":40,"y":50,"w":580,"h":80}]'></textarea></div></section>
         </section>
       </form>
     </aside>
@@ -167,8 +195,20 @@
     </section>
 
     <aside class="panel library-panel" aria-label="Card library">
-      <div class="panel-heading compact"><div><span class="eyebrow">LOCAL DATABASE</span><h2>Set library</h2></div><button id="newCardBtn" class="square" title="New card">＋</button></div>
+      <section class="project-studio">
+        <div class="panel-heading compact"><div><span class="eyebrow">PROJECT</span><h2>Sets &amp; decks</h2></div><button id="newProjectBtn" class="square" title="New set or deck">＋</button></div>
+        <div class="field"><label for="projectSelect">Active project</label><select id="projectSelect"></select></div>
+        <div id="projectEditor" class="project-editor">
+          <div class="field"><label for="projectName">Name</label><input id="projectName" maxlength="100"></div>
+          <div class="grid-2"><div class="field"><label for="projectType">Type</label><select id="projectType"><option value="set">Card set</option><option value="deck">Deck</option></select></div><div class="field"><label for="projectCover">Cover card</label><select id="projectCover"><option value="">None</option></select></div></div>
+          <div class="field"><label for="projectDescription">Description</label><textarea id="projectDescription" rows="2"></textarea></div>
+        </div>
+        <div id="projectStats" class="project-stats" aria-live="polite"></div>
+        <div class="project-actions"><button id="shareProjectBtn" type="button">Share link</button><button id="importLinkBtn" type="button">Import link</button><button id="projectHistoryBtn" type="button">History</button><button id="printPlayBtn" type="button">Print &amp; play</button></div>
+      </section>
+      <div class="panel-heading compact library-title"><div><span class="eyebrow">ACTIVE PROJECT</span><h2>Cards</h2></div><button id="newCardBtn" class="square" title="New card">＋</button></div>
       <div class="library-tools">
+        <label class="select-all-row"><input id="selectAllCards" type="checkbox"><span>Select all cards in this project</span></label>
         <input id="searchCards" type="search" placeholder="Search cards" aria-label="Search cards">
         <select id="filterFaction" aria-label="Filter by faction"><option value="">All factions</option></select>
       </div>
@@ -184,11 +224,14 @@
         <input id="bulkFile" type="file" accept=".csv,.tsv,.xlsx,.xls,.json" hidden>
         <div class="button-row"><button id="bulkImportBtn">Choose spreadsheet</button><a href="mechtitan-card-template.csv" download>CSV template</a></div>
         <button id="exportGroupBtn" class="wide">Export selected images</button>
+        <h3 class="export-heading">Playtesting exports</h3>
+        <div class="export-grid"><button id="exportTtsBtn">Tabletop Simulator</button><button id="exportArenaBtn">TCG-Arena list</button><button id="exportDeckSheetBtn">Printable deck sheet</button><button id="exportNativeDeckBtn">MechTitan JSON</button></div>
       </div>
     </aside>
   </main>
 
   <input id="projectFile" type="file" accept="application/json,.json" hidden>
+  <dialog id="studioDialog" class="studio-dialog"><form method="dialog"><header><h2 id="studioDialogTitle">Project tools</h2><button value="cancel" aria-label="Close">×</button></header><div id="studioDialogBody"></div></form></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
