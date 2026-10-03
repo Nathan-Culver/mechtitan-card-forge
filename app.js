@@ -3,7 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 4;
+  const DATA_VERSION = 5;
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -39,7 +39,8 @@
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
     staticKeywordBP: 0, staticAbilityBP: 0, operationalKeywordBP: 0, operationalAbilityBP: 0,
     battlefieldProjection: 1, expectedOperations: 3,
-    theme: 'titanium', titleSize: 100, uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
+    theme: 'titanium', titleSize: 100, nameX: 0, nameY: 0, rulesX: 0, rulesY: 0, flavorX: 0, flavorY: 0,
+    uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
   function preloadLayers() {
@@ -60,7 +61,7 @@
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
   }
-  function assetValue(value) { return value === '' || value == null ? '' : clamp(value, 1, 4, 1); }
+  function assetValue(value) { return value === '' || value == null ? '' : clamp(value, 1, 5, 1); }
   function removableStat(value, min, max, fallback) {
     return String(value ?? '').trim() === '-' ? '-' : clamp(value, min, max, fallback);
   }
@@ -78,7 +79,7 @@
     return {
       ...merged,
       id: /^[a-z0-9_-]+$/i.test(String(raw.id || '')) ? String(raw.id) : uid(),
-      name: String(merged.name || defaults.name).slice(0, 34),
+      name: String(merged.name || defaults.name).slice(0, 500),
       construction: removableStat(merged.construction, 0, 20, 0), operation: removableStat(merged.operation, 0, 5, 0),
       assetL: assetValue(merged.assetL), assetP: assetValue(merged.assetP), assetS: assetValue(merged.assetS), assetT: assetValue(merged.assetT), assetU: assetValue(merged.assetU),
       speed: ['XS','S','M','F','XF','-'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
@@ -86,6 +87,9 @@
       cycle: merged.cycle === '' || merged.cycle == null ? '-' : removableStat(merged.cycle, 1, 3, 1),
       rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
+      nameX: clamp(merged.nameX, -100, 100, 0), nameY: clamp(merged.nameY, -50, 50, 0),
+      rulesX: clamp(merged.rulesX, -100, 100, 0), rulesY: clamp(merged.rulesY, -100, 100, 0),
+      flavorX: clamp(merged.flavorX, -100, 100, 0), flavorY: clamp(merged.flavorY, -100, 100, 0),
       uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
       showTags: merged.showTags !== false && String(merged.showTags).toLowerCase() !== 'false',
       showTypes: true,
@@ -116,6 +120,11 @@
       if (legacyTraits === 'mech|artillery|omni|clan|wolf' || legacyTraits === 'mech|artillery|clan|wolf') {
         migrated.traits = 'Wolf • Clan • Artillery • Mech';
       }
+    }
+    if (fromVersion < 5) {
+      migrated.nameX = Number(migrated.nameX ?? 0); migrated.nameY = Number(migrated.nameY ?? 0);
+      migrated.rulesX = Number(migrated.rulesX ?? 0); migrated.rulesY = Number(migrated.rulesY ?? 0);
+      migrated.flavorX = Number(migrated.flavorX ?? 0); migrated.flavorY = Number(migrated.flavorY ?? 0);
     }
     return migrated;
   }
@@ -166,7 +175,7 @@
 
   function clearCurrentCard() {
     const current = cards.find(card => card.id === currentId);
-    const label = current?.name || getFormData().name || 'this card';
+    const label = plainTextFromMarkup(current?.name || getFormData().name) || 'this card';
     if (!window.confirm(`Clear ${label}? This replaces its saved contents in this browser with a blank card.`)) return;
 
     currentId ||= uid();
@@ -221,7 +230,7 @@
   }
 
   function updateOutputs() {
-    ['artScale','artX','artY','titleSize'].forEach(id => {
+    ['artScale','artX','artY','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
       const input = document.querySelector(`#${id}`);
       const out = document.querySelector(`#${id}Out`);
       if (out) out.textContent = (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
@@ -579,6 +588,38 @@
     fillTextOpticallyCentered(c, asset, centerX, centerY + .35);
     c.restore();
   }
+  function drawAssetCostIcon(c, value, asset, centerX, centerY) {
+    const colors = { L: '#0b5fae', P: '#9c4dcc', S: '#8a6500', T: '#8b1e2d', U: '#117d45' };
+    const color = colors[asset] || '#4a4a4a';
+    const width = 34, height = 21, radius = 10.5;
+    const left = centerX - width / 2, top = centerY - height / 2, split = left + width / 2;
+    c.save();
+    const shell = c.createLinearGradient(left, top, left + width, top + height);
+    shell.addColorStop(0, '#e9e5d9');
+    shell.addColorStop(.42, '#d2d3cd');
+    shell.addColorStop(.72, '#e2dfd3');
+    shell.addColorStop(1, '#aeb3ae');
+    c.fillStyle = shell;
+    roundedRect(c, left, top, width, height, radius).fill();
+    strokeEmbossedRoundedRect(c, left, top, width, height, radius, 2.5);
+    c.save();
+    roundedRect(c, left, top, width, height, radius).clip();
+    const colorTexture = c.createLinearGradient(split, top, left + width, top + height);
+    colorTexture.addColorStop(0, '#b8ad94');
+    colorTexture.addColorStop(.12, color);
+    colorTexture.addColorStop(.68, color);
+    colorTexture.addColorStop(1, '#16191a');
+    c.fillStyle = colorTexture;
+    c.fillRect(split, top, width / 2, height);
+    c.restore();
+    strokeEmbossedRoundedRect(c, left, top, width, height, radius, 2.5);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = '#050505'; c.font = '900 13px "Arial Black", Arial';
+    fillTextOpticallyCentered(c, String(value), left + width * .27, centerY + .35);
+    c.fillStyle = '#fff'; c.font = '900 12px "Arial Black", Arial';
+    fillTextOpticallyCentered(c, asset, left + width * .73, centerY + .35);
+    c.restore();
+  }
   function wrapLines(c, text, maxWidth, maxLines = 6) {
     const words = String(text || '').split(/\s+/).filter(Boolean); const lines = []; let line = '';
     for (const word of words) {
@@ -618,14 +659,86 @@
     return segments;
   }
 
+  function cssLength(value, inheritedSize) {
+    const source = String(value || '').trim().toLowerCase();
+    const number = Number.parseFloat(source);
+    if (!Number.isFinite(number)) return inheritedSize;
+    if (source.endsWith('px')) return number;
+    if (source.endsWith('pt')) return number * 96 / 72;
+    if (source.endsWith('em') || source.endsWith('rem')) return inheritedSize * number;
+    if (source.endsWith('%')) return inheritedSize * number / 100;
+    return number;
+  }
+
+  function parseRichTextSegments(text, base = {}) {
+    const source = String(text || '');
+    if (!/<[a-z][\s\S]*?>/i.test(source) && !/&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i.test(source)) return parseMarkdownSegments(source, base);
+    const documentRoot = new DOMParser().parseFromString(`<body>${source}</body>`, 'text/html');
+    documentRoot.querySelectorAll('script,style,iframe,object,embed,img,svg,canvas,video,audio,input,button,form,link,meta').forEach(node => node.remove());
+    const segments = [];
+    const blockTags = new Set(['ADDRESS','ARTICLE','ASIDE','BLOCKQUOTE','DIV','FIGCAPTION','FOOTER','HEADER','LI','MAIN','NAV','P','SECTION']);
+    const pushNewline = () => {
+      if (!segments.length || !String(segments[segments.length - 1].text || '').endsWith('\n')) segments.push({ ...base, text: '\n' });
+    };
+    const walk = (node, inherited) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        segments.push(...parseMarkdownSegments(node.nodeValue, inherited));
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName;
+      if (tag === 'BR') { pushNewline(); return; }
+      const next = { ...inherited };
+      if (tag === 'B' || tag === 'STRONG') next.weight = Math.max(700, Number(next.weight) || 400);
+      if (tag === 'I' || tag === 'EM' || tag === 'CITE') next.style = 'italic';
+      if (tag === 'U' || tag === 'INS') next.underline = true;
+      if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') next.strike = true;
+      if (tag === 'SMALL') next.size = (next.size || 18) * .82;
+      if (tag === 'BIG') next.size = (next.size || 18) * 1.18;
+      if (tag === 'SUB') { next.size = (next.size || 18) * .72; next.baselineOffset = 4; }
+      if (tag === 'SUP') { next.size = (next.size || 18) * .72; next.baselineOffset = -7; }
+      if (tag === 'MARK') next.background = '#fff1a8';
+      if (tag === 'CODE' || tag === 'KBD' || tag === 'SAMP') next.fontFamily = 'Consolas, "Courier New", monospace';
+      const style = node.style;
+      if (style.color && CSS.supports('color', style.color)) next.color = style.color;
+      if (style.backgroundColor && CSS.supports('color', style.backgroundColor)) next.background = style.backgroundColor;
+      if (style.fontSize) next.size = Math.max(8, Math.min(60, cssLength(style.fontSize, next.size || 18)));
+      if (style.fontWeight) next.weight = /bold/i.test(style.fontWeight) ? 700 : (Number(style.fontWeight) || next.weight);
+      if (style.fontStyle && /italic|oblique/i.test(style.fontStyle)) next.style = 'italic';
+      if (style.textDecorationLine || style.textDecoration) {
+        const decoration = `${style.textDecorationLine} ${style.textDecoration}`;
+        if (/underline/i.test(decoration)) next.underline = true;
+        if (/line-through/i.test(decoration)) next.strike = true;
+      }
+      if (style.fontFamily && /^[\w\s,"'-]+$/.test(style.fontFamily)) next.fontFamily = style.fontFamily;
+      if (style.letterSpacing && style.letterSpacing !== 'normal') next.letterSpacing = Math.max(-2, Math.min(12, cssLength(style.letterSpacing, 0)));
+      if (blockTags.has(tag) && segments.length) pushNewline();
+      if (tag === 'LI') segments.push({ ...next, text: '• ' });
+      node.childNodes.forEach(child => walk(child, next));
+      if (blockTags.has(tag)) pushNewline();
+    };
+    documentRoot.body.childNodes.forEach(node => walk(node, base));
+    while (segments.length && /^\n+$/.test(segments[segments.length - 1].text || '')) segments.pop();
+    return segments;
+  }
+
+  function plainTextFromMarkup(value) {
+    const source = String(value || '');
+    if (!/<[a-z][\s\S]*?>/i.test(source) && !/&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i.test(source)) return source.replace(/[*_~]/g, '');
+    const parsed = new DOMParser().parseFromString(`<body>${source}</body>`, 'text/html');
+    parsed.querySelectorAll('script,style,iframe,object,embed,img,svg,canvas,video,audio,input,button,form').forEach(node => node.remove());
+    return parsed.body.textContent.replace(/\s+/g, ' ').trim();
+  }
+
   function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines, draw = true) {
     let cursorX = x, cursorY = y, lines = 1;
+    const defaultFill = c.fillStyle;
     for (const segment of segments) {
       // Rules text supports compact inline game symbols: {t} for Tap,
-      // {L}/{P}/{S}/{T}/{U} for Asset pills, and {0} through {20} for
-      // resource costs. Keep each symbol atomic while wrapping so it behaves
-      // like a single printed glyph.
-      const words = String(segment.text || '').split(/(\{(?:t|[LPSTU]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
+      // {L}/{P}/{S}/{T}/{U} for Asset pills, {1, L} through {5, U} for
+      // numbered Asset costs, and {0} through {20} for resource costs. Keep
+      // each symbol atomic while wrapping so it behaves like a printed glyph.
+      const words = String(segment.text || '').split(/(\{[1-5]\s*,\s*[LPSTU]\}|\{(?:t|[LPSTU]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
       for (const word of words) {
         if (word === '\n') {
           lines += 1;
@@ -635,11 +748,15 @@
         }
         const tapToken = word === '{t}';
         const assetToken = /^\{[LPSTU]\}$/.test(word);
+        const assetCostToken = word.match(/^\{([1-5])\s*,\s*([LPSTU])\}$/);
         const resourceToken = /^\{(?:[0-9]|1[0-9]|20)\}$/.test(word);
         const colonToken = word === ':';
         const fontWeight = colonToken ? 640 : (segment.weight || 400);
-        c.font = `${segment.style || 'normal'} ${fontWeight} ${segment.size || 18}px Arial, sans-serif`;
-        const width = resourceToken ? 26.5 : tapToken ? 23 : assetToken ? 36 : c.measureText(word).width;
+        const fontSize = segment.size || 18;
+        const fontFamily = segment.fontFamily || 'Arial, sans-serif';
+        c.font = `${segment.style || 'normal'} ${fontWeight} ${fontSize}px ${fontFamily}`;
+        if ('letterSpacing' in c) c.letterSpacing = `${segment.letterSpacing || 0}px`;
+        const width = resourceToken ? 26.5 : tapToken ? 23 : (assetToken || assetCostToken) ? 36 : c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
           if (lines > maxLines) return cursorY;
@@ -649,19 +766,63 @@
         if (draw) {
           if (tapToken) drawTapIcon(c, cursorX + 10.5, cursorY - 7.5);
           else if (assetToken) drawAssetIcon(c, word[1], cursorX + 17, cursorY - 7.5);
+          else if (assetCostToken) drawAssetCostIcon(c, assetCostToken[1], assetCostToken[2], cursorX + 17, cursorY - 7.5);
           else if (resourceToken) drawResourceIcon(c, word.slice(1, -1), cursorX + 12.25, cursorY - 7.5);
           else {
-            c.fillText(word, cursorX, cursorY);
-            if (segment.strike && !/^\s+$/.test(word)) {
+            const textY = cursorY + (segment.baselineOffset || 0);
+            if (segment.background && !/^\s+$/.test(word)) {
+              c.save(); c.fillStyle = segment.background; c.fillRect(cursorX - 1, textY - fontSize + 3, width + 2, fontSize + 4); c.restore();
+            }
+            c.fillStyle = segment.color || defaultFill;
+            c.fillText(word, cursorX, textY);
+            if ((segment.strike || segment.underline) && !/^\s+$/.test(word)) {
               c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = Math.max(1, (segment.size || 18) / 16);
-              c.beginPath(); c.moveTo(cursorX, cursorY - (segment.size || 18) * .32); c.lineTo(cursorX + width, cursorY - (segment.size || 18) * .32); c.stroke(); c.restore();
+              if (segment.strike) { c.beginPath(); c.moveTo(cursorX, textY - fontSize * .32); c.lineTo(cursorX + width, textY - fontSize * .32); c.stroke(); }
+              if (segment.underline) { c.beginPath(); c.moveTo(cursorX, textY + 2); c.lineTo(cursorX + width, textY + 2); c.stroke(); }
+              c.restore();
             }
           }
         }
         cursorX += width;
       }
     }
+    if ('letterSpacing' in c) c.letterSpacing = '0px';
     return { cursorY, lines };
+  }
+
+  function drawRichTitle(c, markup, centerX, centerY, maxWidth, startSize, uppercase = false) {
+    const segments = parseRichTextSegments(markup, { weight: 900, size: startSize, fontFamily: '"Arial Black", "Arial Narrow", Arial', color: '#040404' })
+      .map(segment => ({ ...segment, text: String(segment.text || '').replace(/\s*\n\s*/g, ' ') }));
+    if (uppercase) segments.forEach(segment => { segment.text = segment.text.toUpperCase(); });
+    const measure = factor => segments.reduce((total, segment) => {
+      const size = Math.max(8, (segment.size || startSize) * factor);
+      c.font = `${segment.style || 'normal'} ${segment.weight || 900} ${size}px ${segment.fontFamily || 'Arial'}`;
+      if ('letterSpacing' in c) c.letterSpacing = `${segment.letterSpacing || 0}px`;
+      return total + c.measureText(segment.text).width;
+    }, 0);
+    const naturalWidth = measure(1);
+    const factor = naturalWidth > maxWidth ? Math.max(22 / startSize, maxWidth / naturalWidth) : 1;
+    const width = measure(factor);
+    let x = centerX - width / 2;
+    c.save(); c.textAlign = 'left'; c.textBaseline = 'middle'; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1;
+    for (const segment of segments) {
+      const size = Math.max(8, (segment.size || startSize) * factor);
+      c.font = `${segment.style || 'normal'} ${segment.weight || 900} ${size}px ${segment.fontFamily || 'Arial'}`;
+      if ('letterSpacing' in c) c.letterSpacing = `${segment.letterSpacing || 0}px`;
+      const widthPart = c.measureText(segment.text).width;
+      const y = centerY + (segment.baselineOffset || 0);
+      if (segment.background && segment.text.trim()) { c.save(); c.shadowColor = 'transparent'; c.fillStyle = segment.background; c.fillRect(x - 1, y - size / 2, widthPart + 2, size); c.restore(); }
+      c.fillStyle = segment.color || '#040404'; c.fillText(segment.text, x, y);
+      if ((segment.strike || segment.underline) && segment.text.trim()) {
+        c.save(); c.shadowColor = 'transparent'; c.strokeStyle = c.fillStyle; c.lineWidth = Math.max(1, size / 18);
+        if (segment.strike) { c.beginPath(); c.moveTo(x, y); c.lineTo(x + widthPart, y); c.stroke(); }
+        if (segment.underline) { c.beginPath(); c.moveTo(x, y + size * .42); c.lineTo(x + widthPart, y + size * .42); c.stroke(); }
+        c.restore();
+      }
+      x += widthPart;
+    }
+    c.restore();
+    if ('letterSpacing' in c) c.letterSpacing = '0px';
   }
 
   function drawCard(target, card, scale = 1, guides = false) {
@@ -721,9 +882,7 @@
         c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 90.5);
       }
 
-      const title = card.uppercaseTitle ? card.name.toUpperCase() : card.name;
-      const titleSize = fitText(c, title, 350, 46 * card.titleSize / 100, 22, 900);
-      c.fillStyle = '#040404'; c.font = `900 ${titleSize}px "Arial Black", "Arial Narrow", Arial`; c.shadowColor = '#8d8d8d'; c.shadowOffsetY = 1; fillTextGlyphCentered(c, title, 347, 101.5); c.shadowColor = 'transparent'; c.shadowOffsetY = 0;
+      drawRichTitle(c, card.name, 347 + card.nameX, 101.5 + card.nameY, 350, 46 * card.titleSize / 100, card.uppercaseTitle);
       if (card.cycle !== '' && card.cycle !== '-') {
         drawCycleControl(c, 565.5, 89.5);
         c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5);
@@ -761,6 +920,17 @@
     if (!metadataHidden) {
       const metadataPaperHeight = singleMetadataRow ? 64 : 126;
       drawFramePaperTexture(c, mx(60), my(155), mw(930), mh(metadataPaperHeight), 620, false, 90, 480);
+    }
+    if (!hasAssetCosts && (card.showTags || card.showTypes) && layerImages.frame) {
+      // With no Asset rail, the metadata row begins at source x=60 while the
+      // artwork begins below it. Replace the exposed paper strip at x=42–60
+      // with a stretched continuation of the adjacent blue side frame.
+      const metadataBottomSource = card.showTypes ? (typesOnly ? 217 : 281) : 219;
+      const sourceScaleX = layerImages.frame.naturalWidth / 1056;
+      const sourceScaleY = layerImages.frame.naturalHeight / 1490;
+      c.drawImage(layerImages.frame,
+        24 * sourceScaleX, 155 * sourceScaleY, 18 * sourceScaleX, (metadataBottomSource - 155) * sourceScaleY,
+        mx(42), my(155), mx(60) - mx(42), my(metadataBottomSource) - my(155));
     }
     if (assets.length) {
       // Paint the entire name/cost band and Asset rail through one clipped
@@ -930,9 +1100,14 @@
     // immediately above it, rather than restoring those baked-in sockets or
     // leaving a floating trapezoidal patch. Scale the backing-store sample so
     // preview and high-DPI exports remain identical.
-    const rarityArtPatch = document.createElement('canvas'); rarityArtPatch.width = 142; rarityArtPatch.height = 25;
-    rarityArtPatch.getContext('2d').drawImage(c.canvas, 450 * scale, 550 * scale, 142 * scale, 25 * scale, 0, 0, 142, 25);
-    c.drawImage(rarityArtPatch, 450, 575, 142, 25);
+    // A generated no-art field is already clean and continuous here. Copying
+    // its preceding band would restart the diagonal pattern just above the
+    // rarity rail, producing broken line work in the default card.
+    if (artImage) {
+      const rarityArtPatch = document.createElement('canvas'); rarityArtPatch.width = 142; rarityArtPatch.height = 25;
+      rarityArtPatch.getContext('2d').drawImage(c.canvas, 450 * scale, 550 * scale, 142 * scale, 25 * scale, 0, 0, 142, 25);
+      c.drawImage(rarityArtPatch, 450, 575, 142, 25);
+    }
 
     const rarityCount = { None: 0, Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] ?? 4;
     const boltHousingRight = 592;
@@ -967,18 +1142,18 @@
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
     const ruleParts = String(card.rules || '').split(/\s+[—–-]\s+/, 2);
-    const ruleSegments = ruleParts.length > 1
+    const ruleSegments = ruleParts.length > 1 && !/<[a-z][\s\S]*?>/i.test(card.rules)
       ? [
-          ...parseMarkdownSegments(`${ruleParts[0]} `, { weight: 800, size: 20.5 }),
-          ...parseMarkdownSegments(`(${ruleParts[1]})`, { style: 'italic', weight: 400, size: 21.5 })
+          ...parseRichTextSegments(`${ruleParts[0]} `, { weight: 800, size: 20.5, color: '#080808' }),
+          ...parseRichTextSegments(`(${ruleParts[1]})`, { style: 'italic', weight: 400, size: 21.5, color: '#080808' })
         ]
-      : parseMarkdownSegments(card.rules, { weight: 700, size: 20.5 });
-    drawStyledSegments(c, ruleSegments, 85, 653, 486, 24, 4);
+      : parseRichTextSegments(card.rules, { weight: 700, size: 20.5, color: '#080808' });
+    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, 653 + card.rulesY, 486, 24, 4);
     if (card.flavor) {
-      const flavorSegments = parseMarkdownSegments(card.flavor, { style: 'italic', weight: 400, size: 21 });
+      const flavorSegments = parseRichTextSegments(card.flavor, { style: 'italic', weight: 400, size: 21, color: '#080808' });
       const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false);
-      const flavorY = 764 - Math.max(0, flavorLayout.lines - 1) * 23;
-      drawStyledSegments(c, flavorSegments, 85, flavorY, 466, 23, 3);
+      const flavorY = 764 - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
+      drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, 3);
     }
 
     const hasSpeed = card.speed !== '-', hasAttack = card.attack !== '-';
@@ -1105,8 +1280,8 @@
     const factions = [...new Set(cards.map(c => c.faction).filter(Boolean))].sort();
     const filter = document.querySelector('#filterFaction');
     const old = filter.value; filter.innerHTML = '<option value="">All factions</option>' + factions.map(x => `<option>${escXml(x)}</option>`).join(''); filter.value = old;
-    const shown = cards.filter(c => (!query || `${c.name} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
-    cardList.innerHTML = shown.length ? shown.map(c => `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0"><input type="checkbox" aria-label="Select ${escXml(c.name)}" ${selected.has(c.id) ? 'checked' : ''}><div class="mini-card"></div><div class="library-meta"><strong>${escXml(c.name)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`).join('') : '<p class="hint">No cards match this view.</p>';
+    const shown = cards.filter(c => (!query || `${plainTextFromMarkup(c.name)} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
+    cardList.innerHTML = shown.length ? shown.map(c => { const displayName = plainTextFromMarkup(c.name); return `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0"><input type="checkbox" aria-label="Select ${escXml(displayName)}" ${selected.has(c.id) ? 'checked' : ''}><div class="mini-card"></div><div class="library-meta"><strong>${escXml(displayName)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`; }).join('') : '<p class="hint">No cards match this view.</p>';
     document.querySelector('#selectionCount').textContent = `${selected.size} selected`;
   }
 
@@ -1153,7 +1328,7 @@
     const previous = artImage; artImage = image; drawCard(outCtx, card, factor, false); artImage = previous;
     if (format === 'svg') {
       const png = out.toDataURL('image/png');
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2.75in" height="3.75in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(card.name)}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2.75in" height="3.75in" viewBox="0 0 ${out.width} ${out.height}"><title>${escXml(plainTextFromMarkup(card.name))}</title><image width="${out.width}" height="${out.height}" href="${png}"/></svg>`;
       return new Blob([svg], { type: 'image/svg+xml' });
     }
     const raster = await new Promise(resolve => out.toBlob(resolve, format === 'jpeg' ? 'image/jpeg' : 'image/png', .95));
@@ -1162,7 +1337,8 @@
 
   async function exportCard(card = getFormData(), format = document.querySelector('#exportFormat').value, dpi = Number(document.querySelector('#exportDpi').value)) {
     const blob = await renderCardBlob(card, format, dpi); const ext = format === 'jpeg' ? 'jpg' : format;
-    downloadBlob(blob, `${slug(card.name)}-${dpi}dpi.${ext}`); toast(`${card.name} exported at ${dpi} DPI`);
+    const displayName = plainTextFromMarkup(card.name);
+    downloadBlob(blob, `${slug(displayName)}-${dpi}dpi.${ext}`); toast(`${displayName} exported at ${dpi} DPI`);
   }
 
   function exportProject() {

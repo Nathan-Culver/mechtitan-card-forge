@@ -13,6 +13,8 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Rules for every specified cost and combat stat
 - Live comprehensive Unit balance model with separate Static, Operational, and Economic Power; suggested Construction; cost variance; Battlefield Projection diagnostics; and configurable lifetime cost
 - Compact Power Rating summary with an on-demand BP breakdown
+- Safe rich-text rendering for card names, rules, and flavor text using standard inline HTML tags, inline CSS, and existing Markdown
+- Independent horizontal and vertical positioning controls for card names, rules text, and flavor text
 - Artwork upload, crop positioning, frame themes, and typography controls
 - Local set library with search, faction filtering, duplication, and multi-select
 - CSV, TSV, XLSX, XLS, and JSON bulk import
@@ -47,11 +49,12 @@ Rules text supports compact game symbols alongside Markdown:
 
 - `{t}` — Tap symbol
 - `{L}`, `{P}`, `{S}`, `{T}`, `{U}` — the matching colored Asset pill, with no number
+- `{1, L}` through `{5, U}` — a numbered Asset-cost pill matching the card's main Asset Costs, at inline-text size
 - `{0}` through `{20}` — Resource-cost symbol
 
 Asset letters are case-sensitive so `{T}` means the Tactics Asset, while lowercase `{t}` means Tap.
 
-Inline Asset symbols use the same embossed capsule design as Asset Cost pills, filled completely with the Asset color and centered on the letter.
+Inline Asset symbols use the same embossed capsule design as Asset Cost pills. Letter-only symbols are filled completely with the Asset color; numbered symbols use the same pale value field and colored letter field as the main Asset Costs. Editor Asset values range from 1 to 5.
 - `assets/speed-xs.svg` through `assets/speed-xf.svg` — the five moving Speed indicators
 - `assets/stat-housing-left.svg` and `assets/stat-housing-right.svg` — frame-integrated bottom stat housings
 - `assets/attack-pill.svg` and `assets/defense-pill.svg` — inset combat-stat gauges
@@ -61,7 +64,9 @@ Inline Asset symbols use the same embossed capsule design as Asset Cost pills, f
 
 Use `mechtitan-card-template.csv` as the starting point. Supported columns include:
 
-`name`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `staticKeywordBP`, `staticAbilityBP`, `operationalKeywordBP`, `operationalAbilityBP`, `battlefieldProjection`, `expectedOperations`, `rarity`, `faction`, `artist`, `setCode`, `collector`, and `theme`.
+`name`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `staticKeywordBP`, `staticAbilityBP`, `operationalKeywordBP`, `operationalAbilityBP`, `battlefieldProjection`, `expectedOperations`, `rarity`, `faction`, `artist`, `setCode`, `collector`, `theme`, `nameX`, `nameY`, `rulesX`, `rulesY`, `flavorX`, and `flavorY`.
+
+Card names, rules, and flavor text accept standard inline HTML elements and inline CSS. Text-focused styles such as color, background color, font size, font family, font weight, font style, text decoration, and letter spacing are rendered on the card. Scripts, forms, and embedded media are ignored.
 
 ## Unit balance model
 

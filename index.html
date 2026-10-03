@@ -79,7 +79,7 @@
               <p id="balanceDiagnostics">Operation modifies Operational Power only. Projection is diagnostic and does not alter Total Power.</p>
             </div>
           </section>
-          <div class="field full"><label for="name">Card name</label><input id="name" name="name" maxlength="34"></div>
+          <div class="field full"><label for="name">Card name <span>HTML + inline CSS supported</span></label><input id="name" name="name" maxlength="500"></div>
           <div class="grid-3 stat-cost-grid">
             <div class="field"><label for="construction">Construction</label><input id="construction" name="construction" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" maxlength="2" value="-"></div>
             <div class="field"><label for="operation">Operation</label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-5]" maxlength="1" value="-"></div>
@@ -88,19 +88,20 @@
           <fieldset class="asset-fieldset">
             <legend>Asset costs</legend>
             <div class="asset-grid">
-              <label class="asset asset-l"><b>L</b><input name="assetL" type="number" min="1" max="4" placeholder="—"></label>
-              <label class="asset asset-p"><b>P</b><input name="assetP" type="number" min="1" max="4" placeholder="—"></label>
-              <label class="asset asset-s"><b>S</b><input name="assetS" type="number" min="1" max="4" placeholder="—"></label>
-              <label class="asset asset-t"><b>T</b><input name="assetT" type="number" min="1" max="4" placeholder="—"></label>
-              <label class="asset asset-u"><b>U</b><input name="assetU" type="number" min="1" max="4" placeholder="—"></label>
+              <label class="asset asset-l"><b>L</b><input name="assetL" type="number" min="1" max="5" placeholder="—"></label>
+              <label class="asset asset-p"><b>P</b><input name="assetP" type="number" min="1" max="5" placeholder="—"></label>
+              <label class="asset asset-s"><b>S</b><input name="assetS" type="number" min="1" max="5" placeholder="—"></label>
+              <label class="asset asset-t"><b>T</b><input name="assetT" type="number" min="1" max="5" placeholder="—"></label>
+              <label class="asset asset-u"><b>U</b><input name="assetU" type="number" min="1" max="5" placeholder="—"></label>
             </div>
           </fieldset>
           <div class="field full"><label for="loadout">Tags</label><input id="loadout" name="loadout" maxlength="70"></div>
           <div class="field full"><label for="traits">Types / Subtypes <span>Rarity displays first</span></label><input id="traits" name="traits" maxlength="80" placeholder="Wolf • Clan • Artillery • Mech"><small class="field-hint">Example card order: Uncommon • Wolf • Clan • Artillery • Mech</small></div>
           <label class="toggle-row"><input id="showTags" name="showTags" type="checkbox"><span>Show Tags box</span></label>
           <div class="field full"><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None" selected>None (0 bolts)</option></select></div>
-          <div class="field full"><label for="rules">Rules text · Markdown · {t} Tap · {L}/{P}/{S}/{T}/{U} Assets · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
-          <div class="field full"><label for="flavor">Flavor text · Markdown</label><textarea id="flavor" name="flavor" rows="3"></textarea></div>
+          <div class="field full"><label for="rules">Rules text · HTML / inline CSS / Markdown · {t} Tap · {L}/{P}/{S}/{T}/{U} Assets · {1, L}–{5, U} Asset costs · {0}–{20} Resource</label><textarea id="rules" name="rules" rows="4"></textarea></div>
+          <div class="field full"><label for="flavor">Flavor text · HTML / inline CSS / Markdown</label><textarea id="flavor" name="flavor" rows="3"></textarea></div>
+          <p class="field-hint">Safe text styling supports standard inline tags and styles such as color, background-color, font-size, font-family, font-weight, font-style, text-decoration, and letter-spacing. Scripts and embedded media are ignored.</p>
           <div class="grid-3">
             <div class="field"><label for="speed">Speed</label><select id="speed" name="speed"><option value="-" selected>-</option><option>XS</option><option>S</option><option>M</option><option>F</option><option>XF</option></select></div>
             <div class="field"><label for="attack">Attack</label><input id="attack" name="attack" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" value="-"></div>
@@ -134,6 +135,17 @@
         <section class="tab-page" data-page="style">
           <div class="field"><label for="theme">Frame finish</label><select id="theme" name="theme"><option value="titanium">Titanium blue</option><option value="ember">Ember red</option><option value="royal">Royal violet</option><option value="verdant">Verdant green</option></select></div>
           <div class="field"><label for="titleSize">Title size <output id="titleSizeOut">100%</output></label><input id="titleSize" name="titleSize" type="range" min="75" max="115" value="100"></div>
+          <fieldset class="position-fieldset">
+            <legend>Text positioning</legend>
+            <div class="grid-2 position-grid">
+              <div class="field"><label for="nameX">Name horizontal <output id="nameXOut">0</output></label><input id="nameX" name="nameX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field"><label for="nameY">Name vertical <output id="nameYOut">0</output></label><input id="nameY" name="nameY" type="range" min="-50" max="50" value="0"></div>
+              <div class="field"><label for="rulesX">Ability horizontal <output id="rulesXOut">0</output></label><input id="rulesX" name="rulesX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field"><label for="rulesY">Ability vertical <output id="rulesYOut">0</output></label><input id="rulesY" name="rulesY" type="range" min="-100" max="100" value="0"></div>
+              <div class="field"><label for="flavorX">Flavor horizontal <output id="flavorXOut">0</output></label><input id="flavorX" name="flavorX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field"><label for="flavorY">Flavor vertical <output id="flavorYOut">0</output></label><input id="flavorY" name="flavorY" type="range" min="-100" max="100" value="0"></div>
+            </div>
+          </fieldset>
           <label class="toggle-row"><input id="showBleed" type="checkbox" checked><span>Show trim and bleed guides</span></label>
           <label class="toggle-row"><input id="uppercaseTitle" name="uppercaseTitle" type="checkbox"><span>Uppercase card title</span></label>
           <div class="spec-card"><strong>Print specification</strong><span>Trim: 2.5 × 3.5 in</span><span>Bleed: ⅛ in on every edge</span><span>Export: 600 or 1,200 DPI</span></div>
