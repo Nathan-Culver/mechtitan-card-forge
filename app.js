@@ -487,7 +487,9 @@
     c.restore();
     c.restore();
     c.save(); c.fillStyle = '#050505';
-    c.beginPath(); c.moveTo(markerX - 6, y + 3); c.lineTo(markerX + 6, y + 3); c.lineTo(markerX, y + 14); c.closePath(); c.fill();
+    // Keep the dial arm clear of the Speed letter: the original pointer was
+    // visually heavy and reached far enough into the oval to touch "F".
+    c.beginPath(); c.moveTo(markerX - 3, y + 3); c.lineTo(markerX + 3, y + 3); c.lineTo(markerX, y + 8.5); c.closePath(); c.fill();
     c.restore();
     strokeEmbossedEllipse(c, cx, cy, rx, ry, 3.4);
   }
@@ -917,7 +919,8 @@
         }
         c.fillStyle = assetCycleColor ? (card.cycle === 'S' ? '#050505' : '#fff') : '#050505';
         c.font = `900 ${assetCycleColor ? 24 : 27}px "Arial Black", Arial`;
-        fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5);
+        const cycleOpticalY = card.cycle === 'T' ? 3 : 0;
+        fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5 + cycleOpticalY);
       }
     };
     drawHeaderIdentity();
