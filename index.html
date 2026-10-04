@@ -6,10 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261003-5">
+  <link rel="stylesheet" href="styles.css?v=20261004-2">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261003-5"></script>
-  <script defer src="studio.js?v=20261003-5"></script>
+  <script defer src="app.js?v=20261004-2"></script>
+  <script defer src="studio.js?v=20261004-2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +23,7 @@
       <button id="importProjectBtn">Import project</button>
       <button id="exportProjectBtn">Export set</button>
       <button id="clearCardBtn" class="danger subtle-danger">Clear card</button>
-      <button id="saveBtn" class="primary">Save card</button>
+      <button id="saveBtn" class="primary">Save</button>
     </nav>
   </header>
 
@@ -55,7 +55,7 @@
         <section class="tab-page active" data-page="content">
           <div class="grid-2 template-row">
             <div class="field"><label for="cardKind">Card kind</label><select id="cardKind" name="cardKind"><option>Unit</option><option>Command</option><option>Mission</option><option>Resource</option></select></div>
-            <div class="field"><label for="template">Frame template</label><select id="template" name="template"><option value="unit-standard">Standard portrait</option><option value="unit-tall-text">Tall text box</option><option value="unit-extended-art">Extended art</option><option value="horizontal">Horizontal</option><option value="split-combine">Horizontal split / Combine</option><option value="flip">Flip</option><option value="double-faced">Double-faced</option><option value="composite-left">Composite back — left half</option><option value="composite-right">Composite back — right half</option><option value="custom">Custom layers</option></select></div>
+            <div class="field"><label for="template">Frame template</label><select id="template" name="template"><option value="unit-standard">Standard portrait</option><option value="unit-tall-text">Tall text box</option><option value="unit-extended-art">Extended art</option><option value="horizontal">Horizontal</option><option value="horizontal-tall-text">Tall Text Box Horizontal</option><option value="split-combine">Horizontal split / Combine</option><option value="flip">Flip</option><option value="double-faced">Double-faced</option><option value="composite-left">Composite back — top half</option><option value="composite-right">Composite back — bottom half</option><option value="custom">Custom layers</option></select></div>
           </div>
           <div id="faceControls" class="face-controls" hidden><button id="frontFaceBtn" type="button" class="active">Front / top</button><button id="backFaceBtn" type="button">Back / bottom</button></div>
           <section id="balancePanel" class="balance-panel" data-state="incomplete" aria-live="polite">
@@ -132,9 +132,21 @@
           <section id="secondaryFaceFields" class="secondary-face-fields" hidden>
             <h3>Second half / back face</h3>
             <div class="field full"><label for="secondaryName">Name</label><input id="secondaryName" name="secondaryName"></div>
+            <div class="grid-3">
+              <div class="field"><label for="secondaryConstruction">Construction</label><input id="secondaryConstruction" name="secondaryConstruction" type="text" value="-"></div>
+              <div class="field"><label for="secondaryOperation">Operation</label><input id="secondaryOperation" name="secondaryOperation" type="text" value="-"></div>
+              <div class="field"><label for="secondaryCycle">Cycle</label><select id="secondaryCycle" name="secondaryCycle"><option value="-">None</option><option>1</option><option>2</option><option>3</option><option>L</option><option>P</option><option>S</option><option>T</option><option>U</option></select></div>
+            </div>
+            <fieldset class="asset-fieldset"><legend>Second-half Asset costs</legend><div class="asset-grid">
+              <label class="asset asset-l"><b>L</b><input name="secondaryAssetL" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-p"><b>P</b><input name="secondaryAssetP" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-s"><b>S</b><input name="secondaryAssetS" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-t"><b>T</b><input name="secondaryAssetT" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-u"><b>U</b><input name="secondaryAssetU" type="number" min="1" max="5" placeholder="—"></label>
+            </div></fieldset>
+            <div class="field full"><label for="secondaryLoadout">Tags</label><input id="secondaryLoadout" name="secondaryLoadout"></div>
             <div class="field full"><label for="secondaryTraits">Types / Subtypes</label><input id="secondaryTraits" name="secondaryTraits"></div>
+            <div class="field full"><label for="secondaryRarity">Rarity</label><select id="secondaryRarity" name="secondaryRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None">None (0 bolts)</option></select></div>
             <div class="field full"><label for="secondaryRules">Rules text</label><textarea id="secondaryRules" name="secondaryRules" rows="4"></textarea></div>
             <div class="field full"><label for="secondaryFlavor">Flavor text</label><textarea id="secondaryFlavor" name="secondaryFlavor" rows="2"></textarea></div>
+            <div class="grid-3"><div class="field"><label for="secondarySpeed">Speed</label><select id="secondarySpeed" name="secondarySpeed"><option value="-">-</option><option>XS</option><option>S</option><option>M</option><option>F</option><option>XF</option></select></div><div class="field"><label for="secondaryAttack">Attack</label><input id="secondaryAttack" name="secondaryAttack" type="text" value="-"></div><div class="field"><label for="secondaryArmor">Armor</label><input id="secondaryArmor" name="secondaryArmor" type="text" value="-"></div></div>
+            <div class="field full"><label for="secondaryStructure">Structure</label><input id="secondaryStructure" name="secondaryStructure" type="text" value="-"></div>
             <label class="toggle-row"><input id="combineEnabled" name="combineEnabled" type="checkbox"><span>Combine — both halves may be played together</span></label>
             <div class="field full"><label for="compositePairId">Composite pair ID</label><input id="compositePairId" name="compositePairId" placeholder="e.g. leviathan-alpha"></div>
           </section>
@@ -155,6 +167,14 @@
           <div class="field"><label for="artX">Horizontal position <output id="artXOut">0</output></label><input id="artX" name="artX" type="range" min="-100" max="100" value="0"></div>
           <div class="field"><label for="artY">Vertical position <output id="artYOut">0</output></label><input id="artY" name="artY" type="range" min="-100" max="100" value="0"></div>
           <button id="clearArtBtn" type="button">Remove artwork</button>
+          <section id="secondaryArtControls" hidden>
+            <h3>Second-half artwork</h3><input id="secondaryArtFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+            <button id="chooseSecondaryArtBtn" type="button" class="primary">Choose second-half artwork</button>
+            <div class="field"><label for="secondaryArtScale">Artwork scale <output id="secondaryArtScaleOut">100%</output></label><input id="secondaryArtScale" name="secondaryArtScale" type="range" min="100" max="220" value="100"></div>
+            <div class="field"><label for="secondaryArtX">Horizontal position <output id="secondaryArtXOut">0</output></label><input id="secondaryArtX" name="secondaryArtX" type="range" min="-100" max="100" value="0"></div>
+            <div class="field"><label for="secondaryArtY">Vertical position <output id="secondaryArtYOut">0</output></label><input id="secondaryArtY" name="secondaryArtY" type="range" min="-100" max="100" value="0"></div>
+            <button id="clearSecondaryArtBtn" type="button">Remove second-half artwork</button>
+          </section>
           <p class="hint">Tip: the dashed guide marks the 2.5 × 3.5 in trim. Keep important art and text inside it.</p>
         </section>
 
@@ -184,7 +204,7 @@
     <section class="stage" aria-label="Live card preview">
       <div class="stage-toolbar">
         <div><span class="eyebrow">LIVE PREVIEW</span><span id="dimensionsLabel">2.75 × 3.75 in with bleed</span></div>
-        <label class="zoom-control">Zoom <input id="zoom" type="range" min="45" max="100" value="76"><output id="zoomOut">76%</output></label>
+        <label class="zoom-control">Zoom <input id="zoom" type="range" min="35" max="100" value="76"><output id="zoomOut">76%</output></label>
       </div>
       <div class="card-wrap"><canvas id="cardCanvas" width="660" height="900" aria-label="Rendered MechTitan card preview"></canvas></div>
       <div class="export-bar">

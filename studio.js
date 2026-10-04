@@ -7,11 +7,23 @@
   const PROJECT_KEY = 'mechtitan-projects-v1';
   const PRESET_KEY = 'mechtitan-presets-v1';
   const REVISION_KEY = 'mechtitan-revisions-v1';
-  const HORIZONTAL = new Set(['horizontal', 'split-combine']);
+  const HORIZONTAL = new Set(['horizontal', 'horizontal-tall-text', 'split-combine']);
   const TWO_SIDED = new Set(['split-combine', 'flip', 'double-faced', 'composite-left', 'composite-right']);
   const horizontalFrame = new Image();
   horizontalFrame.onload = () => forge.render();
   horizontalFrame.src = 'assets/horizontal-frame-v2.png';
+  const horizontalTallFrame = new Image();
+  horizontalTallFrame.onload = () => forge.render();
+  horizontalTallFrame.src = 'assets/horizontal-tall-text-frame.png';
+  const horizontalSplitFrame = new Image();
+  horizontalSplitFrame.onload = () => forge.render();
+  horizontalSplitFrame.src = 'assets/horizontal-split-frame.png';
+  const compositeTopFrame = new Image();
+  compositeTopFrame.onload = () => forge.render();
+  compositeTopFrame.src = 'assets/composite-back-top.png';
+  const compositeBottomFrame = new Image();
+  compositeBottomFrame.onload = () => forge.render();
+  compositeBottomFrame.src = 'assets/composite-back-bottom.png';
   const $ = selector => document.querySelector(selector);
   const safeJson = (value, fallback) => { try { return JSON.parse(value); } catch (_) { return fallback; } };
   const projectId = () => `project-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -78,7 +90,11 @@
     return card;
   }
   function filterCards(cards) { return activeCards(); }
-  function dimensions(card) { return HORIZONTAL.has(card?.template) ? { width: 900, height: 660 } : { width: 660, height: 900 }; }
+  function dimensions(card) {
+    if (card?.template === 'split-combine') return { width: 1320, height: 900 };
+    if (card?.template?.startsWith('composite') && card.previewFace === 'back') return { width: 900, height: 660 };
+    return HORIZONTAL.has(card?.template) ? { width: 900, height: 660 } : { width: 660, height: 900 };
+  }
 
   const themeColors = {
     titanium: ['#06111a', '#17415c', '#52c9ed'], ember: ['#190806', '#612719', '#ee7148'],
@@ -147,9 +163,9 @@
     if (line) lines.push(line);
     return { lines: lines.slice(0, maxLines), size: 13, lineHeight: 14 };
   }
-  function drawHorizontalRules(ctx, card, box, upsideDown = false) {
+  function drawHorizontalRules(ctx, card, box, upsideDown = false, maxLines = 2) {
     const text = plain(card.rules);
-    const layout = horizontalTextLayout(ctx, text || 'Card ability text', box.w - 34, 2);
+    const layout = horizontalTextLayout(ctx, text || 'Card ability text', box.w - 34, maxLines);
     const align = card.rulesAlign || 'left';
     const drawX = align === 'center' ? box.x + box.w / 2 : align === 'right' ? box.x + box.w - 17 : box.x + 17;
     const startY = box.y + box.h / 2 - (layout.lines.length - 1) * layout.lineHeight / 2 + Number(card.rulesY || 0) * .12;
@@ -163,16 +179,17 @@
     layout.lines.forEach((line, index) => ctx.fillText(line, drawX + Number(card.rulesX || 0) * .18, startY + index * layout.lineHeight, box.w - 34));
     ctx.restore();
   }
-  function drawHorizontalCard(ctx, card, art) {
+  function drawHorizontalCard(ctx, card, art, tallText = false) {
     const width = 900, height = 660;
     const colors = themeColors[card.theme] || themeColors.titanium;
-    const topBox = { x: 52, y: 47, w: 796, h: 48 };
-    const artBox = { x: 49, y: 110, w: 800, h: 386 };
-    const nameStrip = { x: 49, y: 501, w: 800, h: 44 };
-    const bottomBox = { x: 52, y: 556, w: 796, h: 47 };
+    const frame = tallText ? horizontalTallFrame : horizontalFrame;
+    const topBox = tallText ? { x: 48, y: 44, w: 802, h: 109 } : { x: 52, y: 47, w: 796, h: 48 };
+    const artBox = tallText ? { x: 48, y: 169, w: 802, h: 260 } : { x: 49, y: 110, w: 800, h: 386 };
+    const nameStrip = tallText ? { x: 48, y: 435, w: 802, h: 44 } : { x: 49, y: 501, w: 800, h: 44 };
+    const bottomBox = tallText ? { x: 48, y: 491, w: 802, h: 126 } : { x: 52, y: 556, w: 796, h: 47 };
 
     ctx.fillStyle = '#010407'; ctx.fillRect(0, 0, width, height);
-    if (horizontalFrame.complete && horizontalFrame.naturalWidth) ctx.drawImage(horizontalFrame, 0, 0, width, height);
+    if (frame.complete && frame.naturalWidth) ctx.drawImage(frame, 0, 0, width, height);
     else {
       framePath(ctx, 6, 6, width - 12, height - 12, 34);
       const shell = ctx.createLinearGradient(0, 0, width, height); shell.addColorStop(0, colors[1]); shell.addColorStop(.45, colors[0]); shell.addColorStop(1, '#010407');
@@ -181,10 +198,10 @@
 
     // Reuse the clean paper from the blank upper panel so both rules boxes
     // have the same texture and no example text remains baked into the frame.
-    if (horizontalFrame.complete && horizontalFrame.naturalWidth) {
-      const paperSource = { x: 86, y: 77, w: 1305, h: 74 };
-      ctx.drawImage(horizontalFrame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, topBox.x, topBox.y, topBox.w, topBox.h);
-      ctx.drawImage(horizontalFrame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, bottomBox.x, bottomBox.y, bottomBox.w, bottomBox.h);
+    if (frame.complete && frame.naturalWidth) {
+      const paperSource = tallText ? { x: 88, y: 79, w: 1304, h: 130 } : { x: 86, y: 77, w: 1305, h: 74 };
+      ctx.drawImage(frame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, topBox.x, topBox.y, topBox.w, topBox.h);
+      ctx.drawImage(frame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, bottomBox.x, bottomBox.y, bottomBox.w, bottomBox.h);
     } else {
       ctx.fillStyle = '#f3f2ee'; ctx.fillRect(topBox.x, topBox.y, topBox.w, topBox.h); ctx.fillRect(bottomBox.x, bottomBox.y, bottomBox.w, bottomBox.h);
     }
@@ -215,8 +232,159 @@
     ctx.font = '600 22px Arial'; ctx.textAlign = 'right';
     ctx.fillText(typeParts.join(' • ') || plain(card.cardKind), nameStrip.x + nameStrip.w - 14, nameStrip.y + nameStrip.h / 2, nameStrip.w * .52);
 
-    drawHorizontalRules(ctx, card, bottomBox, false);
-    drawHorizontalRules(ctx, card, topBox, true);
+    const maxRuleLines = tallText ? 5 : 2;
+    drawHorizontalRules(ctx, card, bottomBox, false, maxRuleLines);
+    drawHorizontalRules(ctx, card, topBox, true, maxRuleLines);
+  }
+
+  function splitValue(card, key, secondary) {
+    if (!secondary) return card[key];
+    const value = card[`secondary${key[0].toUpperCase()}${key.slice(1)}`];
+    return value === '' || value == null ? card[key] : value;
+  }
+
+  function drawSplitHalf(ctx, card, art, secondary, originX) {
+    const paper = horizontalFrame.complete && horizontalFrame.naturalWidth ? horizontalFrame : null;
+    const header = { x: originX + 64, y: 64, w: 524, h: 82 };
+    const metadata = { x: originX + 126, y: 148, w: 462, h: 44 };
+    const artBox = { x: originX + 74, y: 192, w: 512, h: 406 };
+    const rulesBox = { x: originX + 78, y: 618, w: 510, h: 212 };
+    const sample = { x: 86, y: 77, w: 1305, h: 130 };
+
+    if (paper) {
+      ctx.drawImage(paper, sample.x, sample.y, sample.w, sample.h, header.x, header.y, header.w, header.h);
+      ctx.drawImage(paper, sample.x, sample.y, sample.w, sample.h, rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h);
+      ctx.drawImage(paper, sample.x, sample.y, sample.w, sample.h, originX + 64, 148, 63, 100);
+    } else {
+      ctx.fillStyle = '#f2f1ed'; ctx.fillRect(header.x, header.y, header.w, header.h); ctx.fillRect(rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h);
+    }
+
+    ctx.save(); ctx.beginPath(); ctx.rect(artBox.x, artBox.y, artBox.w, artBox.h); ctx.clip();
+    if (art) {
+      const scaleKey = secondary ? 'secondaryArtScale' : 'artScale';
+      const xKey = secondary ? 'secondaryArtX' : 'artX';
+      const yKey = secondary ? 'secondaryArtY' : 'artY';
+      const ratio = Math.max(artBox.w / art.width, artBox.h / art.height) * (Number(card[scaleKey] || 100) / 100);
+      const aw = art.width * ratio, ah = art.height * ratio;
+      ctx.drawImage(art, artBox.x + (artBox.w - aw) / 2 + Number(card[xKey] || 0), artBox.y + (artBox.h - ah) / 2 + Number(card[yKey] || 0), aw, ah);
+    } else {
+      const gradient = ctx.createLinearGradient(artBox.x, artBox.y, artBox.x + artBox.w, artBox.y + artBox.h);
+      gradient.addColorStop(0, '#16435c'); gradient.addColorStop(.55, '#102536'); gradient.addColorStop(1, '#06111a');
+      ctx.fillStyle = gradient; ctx.fillRect(artBox.x, artBox.y, artBox.w, artBox.h); ctx.strokeStyle = '#3fbfe977'; ctx.lineWidth = 2;
+      for (let sx = artBox.x - artBox.h; sx < artBox.x + artBox.w; sx += 45) { ctx.beginPath(); ctx.moveTo(sx, artBox.y); ctx.lineTo(sx + artBox.h, artBox.y + artBox.h); ctx.stroke(); }
+      ctx.fillStyle = '#dcecf3b8'; ctx.textAlign = 'center'; ctx.font = '900 20px Arial'; ctx.fillText(`UPLOAD ${secondary ? 'SECOND-HALF ' : ''}ARTWORK`, artBox.x + artBox.w / 2, artBox.y + artBox.h / 2);
+    }
+    ctx.restore();
+
+    ctx.fillStyle = '#030303'; ctx.fillRect(metadata.x, metadata.y, metadata.w, metadata.h);
+    const rarity = splitValue(card, 'rarity', secondary);
+    const traits = splitValue(card, 'traits', secondary);
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 19px Arial';
+    ctx.fillText([rarity === 'None' ? '' : rarity, plain(traits)].filter(Boolean).join(' • '), metadata.x + metadata.w / 2, metadata.y + metadata.h / 2, metadata.w - 18);
+
+    const title = plain(splitValue(card, 'name', secondary)) || (secondary ? 'SECOND HALF' : 'CARD NAME');
+    ctx.fillStyle = '#050505'; ctx.font = '900 34px Arial'; ctx.fillText(title.toUpperCase(), originX + 350, 108, 330);
+    const construction = splitValue(card, 'construction', secondary), operation = splitValue(card, 'operation', secondary), cycle = splitValue(card, 'cycle', secondary);
+    const costCircle = (x, value, dark = false) => { if (value === '-') return; ctx.fillStyle = dark ? '#111' : '#f4f4ef'; ctx.strokeStyle = '#050505'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(originX + x, 109, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = dark ? '#fff' : '#050505'; ctx.font = '900 28px Arial'; ctx.fillText(value, originX + x, 111); };
+    costCircle(94, construction); costCircle(139, operation, true); costCircle(566, cycle);
+
+    const assets = ['L','P','S','T','U'].map(key => [key, splitValue(card, `asset${key}`, secondary)]).filter(([, value]) => value !== '');
+    assets.forEach(([key, value], index) => {
+      const y = 167 + index * 34; ctx.fillStyle = '#efeee8'; ctx.strokeStyle = '#050505'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(originX + 67, y - 15, 56, 30, 15); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = ({ L:'#0b5fae', P:'#9c4dcc', S:'#EDD012', T:'#8b1e2d', U:'#117d45' })[key]; ctx.beginPath(); ctx.roundRect(originX + 98, y - 12, 22, 24, 8); ctx.fill();
+      ctx.fillStyle = '#050505'; ctx.font = '900 20px Arial'; ctx.fillText(value, originX + 85, y + 1); ctx.fillStyle = key === 'S' ? '#050505' : '#fff'; ctx.fillText(key, originX + 109, y + 1);
+    });
+
+    ctx.fillStyle = '#080808'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = '500 18px Arial';
+    wrap(ctx, splitValue(card, 'rules', secondary), rulesBox.x + 22, rulesBox.y + 36, rulesBox.w - 44, 22, 4, 'left');
+    ctx.font = 'italic 17px Arial'; wrap(ctx, splitValue(card, 'flavor', secondary), rulesBox.x + 22, rulesBox.y + 130, rulesBox.w - 44, 21, 3, 'left');
+
+    const speed = splitValue(card, 'speed', secondary), attack = splitValue(card, 'attack', secondary), armor = splitValue(card, 'armor', secondary), structure = splitValue(card, 'structure', secondary);
+    const stat = (x, value, fill, color) => { if (value === '-') return; ctx.fillStyle = fill; ctx.strokeStyle = '#050505'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(originX + x, 807, 27, 23, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 29px Arial'; ctx.fillText(value, originX + x, 809); };
+    stat(113, speed, '#d7862e', '#050505'); stat(170, attack, '#a30d16', '#fff'); stat(494, armor, '#d7d7d1', '#050505'); stat(550, structure, '#555', '#fff');
+    ctx.fillStyle = '#050505'; ctx.font = '600 11px Arial'; ctx.textAlign = 'center'; ctx.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', originX + 330, 807); ctx.font = '500 9px Arial'; ctx.fillText(card.copyright || `${card.setCode} • ${card.collector}`, originX + 330, 821);
+  }
+
+  function drawSplitCard(ctx, card, primaryArt, secondaryArt) {
+    const width = 1320, height = 900;
+    ctx.fillStyle = '#01070b'; ctx.fillRect(0, 0, width, height);
+    if (horizontalSplitFrame.complete && horizontalSplitFrame.naturalWidth) ctx.drawImage(horizontalSplitFrame, 0, 0, width, height);
+    drawSplitHalf(ctx, card, primaryArt, false, 0);
+    drawSplitHalf(ctx, card, secondaryArt || primaryArt, true, 660);
+    ctx.fillStyle = '#06111a'; ctx.fillRect(636, 0, 48, height);
+    ctx.save(); ctx.translate(660, height / 2); ctx.rotate(-Math.PI / 2); ctx.fillStyle = '#d7c39b'; ctx.textAlign = 'center'; ctx.font = '900 17px Arial'; ctx.fillText(card.combineEnabled ? 'COMBINE' : 'SPLIT', 0, 6); ctx.restore();
+  }
+
+  function drawCompositeArtwork(ctx, card, art, half) {
+    const box = half === 'top' ? { x: 102, y: 212, w: 696, h: 448, globalY: 212 } : { x: 102, y: 0, w: 696, h: 250, globalY: 660 };
+    const total = { x: 102, y: 212, w: 696, h: 698 };
+    ctx.save(); ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip();
+    if (art) {
+      const ratio = Math.max(total.w / art.width, total.h / art.height) * (Number(card.secondaryArtScale || 100) / 100);
+      const aw = art.width * ratio, ah = art.height * ratio;
+      const dx = total.x + (total.w - aw) / 2 + Number(card.secondaryArtX || 0) * 1.5;
+      const globalDy = total.y + (total.h - ah) / 2 + Number(card.secondaryArtY || 0) * 1.25;
+      ctx.drawImage(art, dx, globalDy - (half === 'bottom' ? 660 : 0), aw, ah);
+    } else {
+      const colors = themeColors[card.theme] || themeColors.titanium;
+      const offset = half === 'bottom' ? 660 : 0;
+      const gradient = ctx.createLinearGradient(total.x, total.y - offset, total.x + total.w, total.y + total.h - offset);
+      gradient.addColorStop(0, colors[1]); gradient.addColorStop(.55, '#102536'); gradient.addColorStop(1, colors[0]);
+      ctx.fillStyle = gradient; ctx.fillRect(box.x, box.y, box.w, box.h);
+      ctx.strokeStyle = `${colors[2]}72`; ctx.lineWidth = 2;
+      for (let sx = -500; sx < 1200; sx += 54) { ctx.beginPath(); ctx.moveTo(sx, total.y - offset); ctx.lineTo(sx + total.h, total.y + total.h - offset); ctx.stroke(); }
+      if (half === 'top') { ctx.fillStyle = '#dcecf3b8'; ctx.textAlign = 'center'; ctx.font = '900 26px Arial'; ctx.fillText('UPLOAD COMPOSITE ARTWORK', 450, 445); }
+    }
+    ctx.restore();
+  }
+
+  function drawCompositeBack(ctx, card, secondaryArt) {
+    const top = card.template === 'composite-left';
+    const frame = top ? compositeTopFrame : compositeBottomFrame;
+    ctx.fillStyle = '#01070b'; ctx.fillRect(0, 0, 900, 660);
+    if (frame.complete && frame.naturalWidth) ctx.drawImage(frame, 0, 0, 900, 660);
+    drawCompositeArtwork(ctx, card, secondaryArt, top ? 'top' : 'bottom');
+
+    const value = key => splitValue(card, key, true);
+    if (top) {
+      // Rebuild the live header over the reference card while keeping its exact shell geometry.
+      if (horizontalFrame.complete && horizontalFrame.naturalWidth) ctx.drawImage(horizontalFrame, 86, 77, 1305, 130, 86, 86, 724, 72);
+      else { ctx.fillStyle = '#f2f1ed'; ctx.fillRect(86, 86, 724, 72); }
+      ctx.fillStyle = '#030303'; ctx.fillRect(176, 160, 634, 52);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 25px Arial';
+      const metadata = [value('rarity') === 'None' ? '' : value('rarity'), plain(value('traits'))].filter(Boolean).join(' • ');
+      ctx.fillText(metadata, 493, 186, 610);
+      ctx.fillStyle = '#050505'; ctx.font = '900 48px Arial'; ctx.fillText((plain(value('name')) || 'COMPOSITE').toUpperCase(), 450, 122, 440);
+
+      const costCircle = (x, cost, dark = false) => {
+        if (cost === '-' || cost === '') return;
+        ctx.fillStyle = dark ? '#111' : '#f4f4ef'; ctx.strokeStyle = '#050505'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, 122, 27, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = dark ? '#fff' : '#050505'; ctx.font = '900 34px Arial'; ctx.fillText(cost, x, 124);
+      };
+      costCircle(125, value('construction')); costCircle(178, value('operation'), true); costCircle(774, value('cycle'));
+
+      ctx.fillStyle = '#f2f1ed'; ctx.fillRect(87, 160, 90, 122);
+      const assets = ['L','P','S','T','U'].map(key => [key, value(`asset${key}`)]).filter(([, amount]) => amount !== '');
+      assets.slice(0, 3).forEach(([key, amount], index) => {
+        const y = 181 + index * 39; ctx.fillStyle = '#efeee8'; ctx.strokeStyle = '#050505'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(94, y - 16, 70, 32, 16); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ({ L:'#0b5fae', P:'#9c4dcc', S:'#EDD012', T:'#8b1e2d', U:'#117d45' })[key]; ctx.beginPath(); ctx.roundRect(130, y - 13, 30, 26, 9); ctx.fill();
+        ctx.fillStyle = '#050505'; ctx.font = '900 23px Arial'; ctx.fillText(amount, 116, y + 1); ctx.fillStyle = key === 'S' ? '#050505' : '#fff'; ctx.fillText(key, 145, y + 1);
+      });
+    } else {
+      const rulesBox = { x: 91, y: 276, w: 718, h: 285 };
+      if (horizontalFrame.complete && horizontalFrame.naturalWidth) ctx.drawImage(horizontalFrame, 86, 77, 1305, 130, rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h);
+      else { ctx.fillStyle = '#f2f1ed'; ctx.fillRect(rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h); }
+      ctx.fillStyle = '#080808'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = '500 25px Arial';
+      wrap(ctx, value('rules'), 120, 325, 660, 31, 5, card.rulesAlign || 'left');
+      ctx.font = 'italic 23px Arial'; wrap(ctx, value('flavor'), 120, 455, 660, 29, 3, card.rulesAlign || 'left');
+      const stat = (x, statValue, fill, color) => {
+        if (statValue === '-' || statValue === '') return;
+        ctx.fillStyle = fill; ctx.strokeStyle = '#050505'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(x, 570, 34, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 36px Arial'; ctx.fillText(statValue, x, 573);
+      };
+      stat(153, value('speed'), '#d7862e', '#050505'); stat(219, value('attack'), '#a30d16', '#fff'); stat(682, value('armor'), '#d7d7d1', '#050505'); stat(749, value('structure'), '#555', '#fff');
+      ctx.fillStyle = '#050505'; ctx.textAlign = 'center'; ctx.font = '700 17px Arial'; ctx.fillText(card.artist ? `Illus. ${card.artist}` : 'Artist credit', 450, 570); ctx.font = '500 14px Arial'; ctx.fillText(card.copyright || `${card.setCode} • ${card.collector}`, 450, 591);
+    }
   }
   function drawCustom(ctx, card, width, height) {
     ctx.fillStyle = '#0a1017'; ctx.fillRect(0, 0, width, height);
@@ -229,30 +397,26 @@
       ctx.restore();
     });
   }
-  function drawVariant(ctx, card, scale, guides, art) {
-    if ((!card.template || card.template === 'unit-standard') && card.previewFace !== 'back') return false;
+  function drawVariant(ctx, card, scale, guides, art, secondaryArt) {
+    if ((!card.template || card.template === 'unit-standard' || card.template === 'unit-tall-text' || card.template === 'unit-extended-art') && card.previewFace !== 'back') return false;
     const { width, height } = dimensions(card); ctx.save(); ctx.scale(scale, scale); ctx.clearRect(0, 0, width, height);
     if ((!card.template || card.template === 'unit-standard') && card.previewFace === 'back') {
       const colors = themeColors[card.theme] || themeColors.titanium; const gradient = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, width * .7); gradient.addColorStop(0, colors[1]); gradient.addColorStop(.55, colors[0]); gradient.addColorStop(1, '#010305'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height); framePath(ctx, 18, 18, width - 36, height - 36, 38); ctx.strokeStyle = colors[2]; ctx.lineWidth = 8; ctx.stroke(); ctx.strokeStyle = '#d6c49a'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#e8f7ff'; ctx.textAlign = 'center'; ctx.font = '900 58px Arial'; ctx.fillText('MECHTITAN', width / 2, height / 2); ctx.font = '700 22px Arial'; ctx.fillStyle = colors[2]; ctx.fillText('CARD FORGE', width / 2, height / 2 + 38);
     } else if (card.template === 'custom') drawCustom(ctx, card, width, height);
-    else if (card.template === 'horizontal') drawHorizontalCard(ctx, card, art);
-    else if (card.template === 'split-combine') {
-      drawPanel(ctx, card, 8, 8, 438, 644, art, false); drawPanel(ctx, card, 454, 8, 438, 644, art, true);
-      ctx.fillStyle = '#000'; ctx.fillRect(420, 292, 60, 76); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 15px Arial'; ctx.fillText(card.combineEnabled ? 'COMBINE' : 'SPLIT', 450, 335);
-    } else if (card.template === 'flip') {
+    else if (card.template === 'horizontal') drawHorizontalCard(ctx, card, art, false);
+    else if (card.template === 'horizontal-tall-text') drawHorizontalCard(ctx, card, art, true);
+    else if (card.template === 'split-combine') drawSplitCard(ctx, card, art, secondaryArt);
+    else if (card.template === 'flip') {
       drawPanel(ctx, card, 8, 8, 644, 438, art, false); ctx.save(); ctx.translate(660, 900); ctx.rotate(Math.PI); drawPanel(ctx, card, 8, 8, 644, 438, art, true); ctx.restore();
     } else if (TWO_SIDED.has(card.template) && card.previewFace === 'back') {
-      if (card.template.startsWith('composite')) {
-        const left = card.template === 'composite-left'; const colors = themeColors[card.theme] || themeColors.titanium;
-        ctx.fillStyle = colors[0]; ctx.fillRect(0, 0, width, height); const gradient = ctx.createRadialGradient(left ? width : 0, height / 2, 20, left ? width : 0, height / 2, width); gradient.addColorStop(0, colors[2]); gradient.addColorStop(1, colors[0]); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = '#fff'; ctx.font = '900 38px Arial'; ctx.textAlign = left ? 'right' : 'left'; ctx.fillText(plain(card.secondaryName || card.name), left ? width - 24 : 24, height / 2); ctx.font = '18px Arial'; ctx.fillText(`COMPOSITE ${left ? 'LEFT' : 'RIGHT'} · ${card.compositePairId || 'UNPAIRED'}`, left ? width - 24 : 24, height / 2 + 40);
-      } else drawPanel(ctx, card, 8, 8, width - 16, height - 16, art, true, card.template === 'unit-extended-art');
+      if (card.template.startsWith('composite')) drawCompositeBack(ctx, card, secondaryArt || art);
+      else drawPanel(ctx, card, 8, 8, width - 16, height - 16, art, true, card.template === 'unit-extended-art');
     } else drawPanel(ctx, card, 8, 8, width - 16, height - 16, art, false, card.template === 'unit-extended-art');
     if (guides) { ctx.save(); ctx.setLineDash([8, 7]); ctx.strokeStyle = '#ff3f6d'; ctx.lineWidth = 2; ctx.strokeRect(30, 30, width - 60, height - 60); ctx.restore(); }
     ctx.restore(); return true;
   }
 
-  window.MechTitanStudio = { decorateCard, filterCards, dimensions, drawVariant };
+  window.MechTitanStudio = { decorateCard, filterCards, dimensions, drawVariant, saveActiveSet };
 
   function balance(card) {
     const speed = { XS: -1, S: -.5, M: 0, F: .5, XF: 1 }[card.speed];
@@ -296,6 +460,23 @@
     const snapshot = JSON.stringify({ project, cards: activeCards() }); if (list[0]?.snapshot === snapshot) return;
     list.unshift({ id: crypto.randomUUID?.() || String(Date.now()), at: now(), reason, snapshot }); revisions.projects[project.id] = list.slice(0, 20); persistRevisions();
   }
+
+  function saveActiveSet() {
+    const card = forge.saveCurrent(false);
+    const project = activeProject();
+    project.name = $('#projectName').value.trim() || 'Untitled Project';
+    project.type = $('#projectType').value;
+    project.description = $('#projectDescription').value;
+    project.coverCardId = $('#projectCover').value;
+    project.cardIds = forge.getCards().filter(item => item.projectId === project.id).map(item => item.id);
+    project.updatedAt = now();
+    persistProjects();
+    captureCardRevision('Set saved');
+    captureProjectRevision('Set saved');
+    renderProjects();
+    forge.toast(`Saved ${project.name} (${activeCards().length} card${activeCards().length === 1 ? '' : 's'})`);
+    return card;
+  }
   function compareObjects(before, after) {
     const keys = [...new Set([...Object.keys(before || {}), ...Object.keys(after || {})])];
     return keys.filter(key => JSON.stringify(before?.[key]) !== JSON.stringify(after?.[key])).map(key => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(short(before?.[key]))}</td><td>${escapeHtml(short(after?.[key]))}</td></tr>`).join('') || '<tr><td colspan="3">No field changes.</td></tr>';
@@ -331,10 +512,11 @@
 
   function updateTemplateUi() {
     const card = forge.getFormData(); const dual = TWO_SIDED.has(card.template);
-    $('#secondaryFaceFields').hidden = !dual; $('#faceControls').hidden = !dual || card.template === 'split-combine' || card.template === 'flip'; $('#customLayerEditor').hidden = card.template !== 'custom';
+    $('#secondaryFaceFields').hidden = !dual; $('#secondaryArtControls').hidden = !dual; $('#faceControls').hidden = !dual || card.template === 'split-combine' || card.template === 'flip'; $('#customLayerEditor').hidden = card.template !== 'custom';
     $('#frontFaceBtn').classList.toggle('active', card.previewFace !== 'back'); $('#backFaceBtn').classList.toggle('active', card.previewFace === 'back');
     document.querySelectorAll('[name="operation"], [name="speed"], [name="attack"], [name="armor"], [name="structure"]').forEach(input => input.closest('.field')?.classList.toggle('conditional-hidden', card.cardKind !== 'Unit'));
-    const horizontal = HORIZONTAL.has(card.template); $('#dimensionsLabel').textContent = horizontal ? '3.75 × 2.75 in with bleed' : '2.75 × 3.75 in with bleed';
+    const horizontal = HORIZONTAL.has(card.template); const compositeBack = card.template.startsWith('composite') && card.previewFace === 'back';
+    $('#dimensionsLabel').textContent = card.template === 'split-combine' ? '5.5 × 3.75 in split card' : horizontal || compositeBack ? '3.75 × 2.75 in with bleed' : '2.75 × 3.75 in with bleed';
   }
 
   function presetData() { const card = forge.getFormData(); return Object.fromEntries(['theme','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY','uppercaseTitle','faction','copyright','rulesAlign','template','customLayers'].map(key => [key, card[key]])); }
@@ -413,7 +595,6 @@
     ['#projectName','#projectType','#projectDescription','#projectCover'].forEach(selector => $(selector).addEventListener('input', scheduleProjectSave));
     $('#newProjectBtn').addEventListener('click', () => { const name = prompt('Name this set or deck:', 'Untitled Set'); if (!name) return; const type = confirm('Create this as a deck? Choose Cancel for a card set.') ? 'deck' : 'set'; const project = normalizeProject({ name, type }); projects.push(project); activeProjectId = project.id; persistProjects(); renderProjects(); const id = forge.createId(); forge.setFormData({ ...forge.defaults, id, projectId: project.id }); captureProjectRevision('Project created'); });
     $('#newCardBtn').addEventListener('click', () => { const card = forge.getFormData(); if (!card.projectId) forge.setFormData({ ...card, projectId: activeProjectId }, false); });
-    $('#saveBtn').addEventListener('click', () => { captureCardRevision(); captureProjectRevision('Card saved'); renderProjects(); });
     $('#deleteBtn').addEventListener('click', () => setTimeout(() => {
       projects.forEach(project => { project.cardIds = project.cardIds.filter(id => forge.getCards().some(card => card.id === id)); });
       let remaining = activeCards();

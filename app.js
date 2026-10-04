@@ -17,9 +17,10 @@
   let cards = [];
   let currentId = null;
   let artImage = null;
+  let secondaryArtImage = null;
   const layerImages = {};
   const layerSources = {
-    reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
+    reference: 'assets/unit-reference-calibration.png', frame: 'assets/unit-frame-v2.png', tallFrame: 'assets/vertical-tall-text-frame.png', extendedFrame: 'assets/extended-art-frame.png', bolt: 'assets/rarity-bolt-v2.png', construction: 'assets/construction-ring.svg',
     operation: 'assets/operation-disc.svg', cycleRing: 'assets/cycle-ring.svg', assetPill: 'assets/asset-cost-pill.svg',
     speedXS: 'assets/speed-xs.svg', speedS: 'assets/speed-s.svg', speedM: 'assets/speed-m.svg', speedF: 'assets/speed-f.svg', speedXF: 'assets/speed-xf.svg',
     header0: 'assets/header-assets-0.svg', header1: 'assets/header-assets-1.svg', header2: 'assets/header-assets-2.svg',
@@ -36,7 +37,7 @@
 
   const defaults = {
     projectId: '', template: 'unit-standard', cardKind: 'Unit', previewFace: 'front', rulesAlign: 'left',
-    secondaryName: '', secondaryTraits: '', secondaryRules: '', secondaryFlavor: '', combineEnabled: false, compositePairId: '', customLayers: '',
+    secondaryName: '', secondaryConstruction: '-', secondaryOperation: '-', secondaryCycle: '-', secondaryAssetL: '', secondaryAssetP: '', secondaryAssetS: '', secondaryAssetT: '', secondaryAssetU: '', secondaryLoadout: '', secondaryTraits: '', secondaryRarity: 'None', secondaryRules: '', secondaryFlavor: '', secondarySpeed: '-', secondaryAttack: '-', secondaryArmor: '-', secondaryStructure: '-', secondaryArtData: '', secondaryArtScale: 100, secondaryArtX: 0, secondaryArtY: 0, combineEnabled: false, compositePairId: '', customLayers: '',
     name: '', construction: '-', operation: '-', assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
     loadout: '', traits: '', rules: '', flavor: '', speed: '-',
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
@@ -95,11 +96,17 @@
       attack: removableStat(merged.attack, 0, 20, 0), armor: removableStat(merged.armor, 0, 5, 0), structure: removableStat(merged.structure, 1, 30, 1),
       cycle: cycleValue(merged.cycle),
       rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
-      template: ['unit-standard','unit-tall-text','unit-extended-art','horizontal','split-combine','flip','double-faced','composite-left','composite-right','custom'].includes(merged.template) ? merged.template : 'unit-standard',
+      template: ['unit-standard','unit-tall-text','unit-extended-art','horizontal','horizontal-tall-text','split-combine','flip','double-faced','composite-left','composite-right','custom'].includes(merged.template) ? merged.template : 'unit-standard',
       cardKind: ['Unit','Command','Mission','Resource'].includes(merged.cardKind) ? merged.cardKind : 'Unit',
       previewFace: merged.previewFace === 'back' ? 'back' : 'front',
       rulesAlign: ['left','center','right'].includes(merged.rulesAlign) ? merged.rulesAlign : 'left',
       combineEnabled: merged.combineEnabled === true || String(merged.combineEnabled).toLowerCase() === 'true',
+      secondaryConstruction: removableStat(merged.secondaryConstruction, 0, 20, 0), secondaryOperation: removableStat(merged.secondaryOperation, 0, 5, 0), secondaryCycle: cycleValue(merged.secondaryCycle),
+      secondaryAssetL: assetValue(merged.secondaryAssetL), secondaryAssetP: assetValue(merged.secondaryAssetP), secondaryAssetS: assetValue(merged.secondaryAssetS), secondaryAssetT: assetValue(merged.secondaryAssetT), secondaryAssetU: assetValue(merged.secondaryAssetU),
+      secondaryRarity: ['Common','Uncommon','Rare','Unique','None'].includes(merged.secondaryRarity) ? merged.secondaryRarity : 'None',
+      secondarySpeed: ['XS','S','M','F','XF','-'].includes(String(merged.secondarySpeed).toUpperCase()) ? String(merged.secondarySpeed).toUpperCase() : '-',
+      secondaryAttack: removableStat(merged.secondaryAttack, 0, 20, 0), secondaryArmor: removableStat(merged.secondaryArmor, 0, 5, 0), secondaryStructure: removableStat(merged.secondaryStructure, 1, 30, 1),
+      secondaryArtScale: clamp(merged.secondaryArtScale, 100, 220, 100), secondaryArtX: clamp(merged.secondaryArtX, -100, 100, 0), secondaryArtY: clamp(merged.secondaryArtY, -100, 100, 0),
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
       nameX: clamp(merged.nameX, -100, 100, 0), nameY: clamp(merged.nameY, -50, 50, 0),
       rulesX: clamp(merged.rulesX, -100, 100, 0), rulesY: clamp(merged.rulesY, -100, 100, 0),
@@ -155,6 +162,7 @@
     obj.showTags = document.querySelector('#showTags').checked;
     obj.showTypes = true;
     obj.artData = form.dataset.artData || '';
+    obj.secondaryArtData = form.dataset.secondaryArtData || '';
     return normalizeCard({ ...obj, id: currentId || uid() });
   }
 
@@ -168,7 +176,9 @@
       else el.value = value ?? '';
     });
     form.dataset.artData = c.artData || '';
+    form.dataset.secondaryArtData = c.secondaryArtData || '';
     loadArt(c.artData || '');
+    loadSecondaryArt(c.secondaryArtData || '');
     updateOutputs();
     saveStatus.textContent = cards.some(x => x.id === currentId) ? 'Saved locally' : 'New card';
     if (push) pushHistory();
@@ -190,6 +200,13 @@
     renderLibrary();
     saveStatus.textContent = 'Saved locally';
     if (showToast) toast('Card saved to this browser');
+    return card;
+  }
+
+  function saveActiveSet() {
+    if (window.MechTitanStudio?.saveActiveSet) return window.MechTitanStudio.saveActiveSet();
+    const card = saveCurrent(false);
+    toast('Set saved to this browser');
     return card;
   }
 
@@ -250,7 +267,7 @@
   }
 
   function updateOutputs() {
-    ['artScale','artX','artY','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
+    ['artScale','artX','artY','secondaryArtScale','secondaryArtX','secondaryArtY','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
       const input = document.querySelector(`#${id}`);
       const out = document.querySelector(`#${id}Out`);
       if (out) out.textContent = (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
@@ -344,6 +361,15 @@
     const img = new Image();
     img.onload = () => { artImage = img; render(); };
     img.onerror = () => { artImage = null; render(); };
+    img.src = data;
+  }
+
+  function loadSecondaryArt(data) {
+    secondaryArtImage = null;
+    if (!data) { render(); return; }
+    const img = new Image();
+    img.onload = () => { secondaryArtImage = img; render(); };
+    img.onerror = () => { secondaryArtImage = null; render(); };
     img.src = data;
   }
 
@@ -848,7 +874,29 @@
   }
 
   function drawCard(target, card, scale = 1, guides = false) {
-    if (window.MechTitanStudio?.drawVariant?.(target, card, scale, guides, artImage)) return;
+    if (card.template === 'double-faced') {
+      const back = card.previewFace === 'back';
+      const face = back ? {
+        ...card, template: 'unit-standard', previewFace: 'front',
+        name: card.secondaryName || card.name,
+        construction: '-', operation: card.secondaryOperation, cycle: '-',
+        assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
+        loadout: card.secondaryLoadout, traits: card.secondaryTraits,
+        rarity: card.secondaryRarity, rules: card.secondaryRules, flavor: card.secondaryFlavor,
+        speed: card.secondarySpeed, attack: card.secondaryAttack,
+        armor: card.secondaryArmor, structure: card.secondaryStructure,
+        showTags: Boolean(card.secondaryLoadout), showTypes: true
+      } : { ...card, template: 'unit-standard', previewFace: 'front' };
+      const savedArt = artImage;
+      if (back) artImage = secondaryArtImage;
+      try { drawCard(target, face, scale, guides); } finally { artImage = savedArt; }
+      return;
+    }
+    if (card.template?.startsWith('composite') && card.previewFace !== 'back') {
+      drawCard(target, { ...card, template: 'unit-standard', previewFace: 'front' }, scale, guides);
+      return;
+    }
+    if (window.MechTitanStudio?.drawVariant?.(target, card, scale, guides, artImage, secondaryArtImage)) return;
     const c = target; const t = themeMap[card.theme] || themeMap.titanium;
     c.save(); c.scale(scale, scale); c.clearRect(0, 0, W, H);
     const bg = c.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#00101e'); bg.addColorStop(.5, '#020609'); bg.addColorStop(1, '#001523'); c.fillStyle = bg; c.fillRect(0, 0, W, H);
@@ -858,21 +906,44 @@
     const my = value => trim.y + value * trim.h / 1490;
     const mw = value => value * trim.w / 1056;
     const mh = value => value * trim.h / 1490;
-    if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
+    const tallTextFrame = card.template === 'unit-tall-text' && layerImages.tallFrame;
+    const extendedArtFrame = card.template === 'unit-extended-art' && layerImages.extendedFrame;
+    if (extendedArtFrame) {
+      // This reference is already composed at the complete bleed aspect ratio:
+      // its artwork opening deliberately reaches both horizontal canvas edges.
+      c.drawImage(extendedArtFrame, 0, 0, W, H);
+      drawFramePaperTexture(c, 60, 60, 530, 91, 620, false, 90, 530, 91);
+      c.save();
+      c.beginPath(); c.moveTo(82, 586); c.lineTo(578, 586); c.lineTo(592, 600); c.lineTo(592, 817); c.lineTo(569, 840); c.lineTo(91, 840); c.lineTo(69, 817); c.lineTo(69, 600); c.closePath(); c.clip();
+      drawFramePaperTexture(c, 69, 586, 523, 254, 620, false, 85, 500, 175);
+      c.restore();
+    } else if (tallTextFrame) {
+      // The supplied reference includes a dark presentation margin. Crop to
+      // the true card bounds so its blue/gold shell fits the existing trim.
+      c.drawImage(tallTextFrame, 50, 50, 975, 1365, trim.x, trim.y, trim.w, trim.h);
+      // Remove the reference card's printed example copy while retaining the
+      // supplied frame geometry. The normal live renderer repopulates these
+      // surfaces with editable costs, title, rules, flavor, credit, and stats.
+      drawFramePaperTexture(c, 60, 60, 530, 91, 620, false, 90, 530, 91);
+      c.save();
+      c.beginPath(); c.moveTo(82, 586); c.lineTo(578, 586); c.lineTo(592, 600); c.lineTo(592, 817); c.lineTo(569, 840); c.lineTo(91, 840); c.lineTo(69, 817); c.lineTo(69, 600); c.closePath(); c.clip();
+      drawFramePaperTexture(c, 69, 586, 523, 254, 620, false, 85, 500, 175);
+      c.restore();
+    } else if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
     else if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
 
     const metadataHidden = !card.showTags && !card.showTypes;
     const singleMetadataRow = card.showTags !== card.showTypes;
     const typesOnly = !card.showTags && card.showTypes;
     const artTopSource = metadataHidden ? 155 : singleMetadataRow ? 219 : 284;
-    const artBottomSource = 1010;
+    const artBottomSource = card.template === 'unit-tall-text' ? 960 : card.template === 'unit-extended-art' ? 978 : 1010;
     const hasAssetCosts = ['L', 'P', 'S', 'T', 'U'].some(key => card[`asset${key}`] !== '');
     const artLeftSource = hasAssetCosts ? 78 : 42;
     const artRightSource = 978;
     const art = {
-      x: mx(artLeftSource),
+      x: card.template === 'unit-extended-art' ? 0 : mx(artLeftSource),
       y: my(artTopSource),
-      w: mx(artRightSource) - mx(artLeftSource),
+      w: card.template === 'unit-extended-art' ? W : mx(artRightSource) - mx(artLeftSource),
       h: my(artBottomSource) - my(artTopSource)
     };
     let artPlacement = null;
@@ -1190,12 +1261,13 @@
     // bold through HTML/CSS or Markdown. Punctuation and em-dash phrasing must
     // not silently change the user's typography.
     const ruleSegments = parseRichTextSegments(card.rules, { weight: 400, size: 20.5, color: '#080808' });
-    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, 653 + card.rulesY, 486, 24, 4);
+    const tallRules = card.template === 'unit-tall-text';
+    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, (tallRules ? 625 : 653) + card.rulesY, 486, 24, tallRules ? 6 : 4);
     if (card.flavor) {
       const flavorSegments = parseRichTextSegments(card.flavor, { style: 'italic', weight: 400, size: 21, color: '#080808' });
       const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false);
-      const flavorY = 764 - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
-      drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, 3);
+      const flavorY = (tallRules ? 747 : 764) - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
+      drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, tallRules ? 4 : 3);
     }
 
     const hasSpeed = card.speed !== '-', hasAttack = card.attack !== '-';
@@ -1459,6 +1531,17 @@
     updateOutputs(); render(); saveStatus.textContent = 'Unsaved changes';
     clearTimeout(historyTimer); historyTimer = setTimeout(pushHistory, 350);
   });
+  document.querySelector('#template').addEventListener('change', event => {
+    if (event.target.value !== 'split-combine' || form.elements.secondaryName.value) return;
+    const pairs = {
+      name:'secondaryName', construction:'secondaryConstruction', operation:'secondaryOperation', cycle:'secondaryCycle', assetL:'secondaryAssetL', assetP:'secondaryAssetP', assetS:'secondaryAssetS', assetT:'secondaryAssetT', assetU:'secondaryAssetU',
+      loadout:'secondaryLoadout', traits:'secondaryTraits', rarity:'secondaryRarity', rules:'secondaryRules', flavor:'secondaryFlavor', speed:'secondarySpeed', attack:'secondaryAttack', armor:'secondaryArmor', structure:'secondaryStructure'
+    };
+    Object.entries(pairs).forEach(([source, target]) => { form.elements[target].value = form.elements[source].value; });
+    form.dataset.secondaryArtData = form.dataset.artData || '';
+    form.elements.secondaryArtScale.value = form.elements.artScale.value; form.elements.secondaryArtX.value = form.elements.artX.value; form.elements.secondaryArtY.value = form.elements.artY.value;
+    loadSecondaryArt(form.dataset.secondaryArtData); updateOutputs(); render(); pushHistory();
+  });
   document.querySelector('#balanceDetailsToggle').addEventListener('click', event => {
     const button = event.currentTarget;
     const details = document.querySelector('#balanceDetails');
@@ -1481,7 +1564,14 @@
     const reader = new FileReader(); reader.onload = () => { form.dataset.artData = reader.result; loadArt(reader.result); saveStatus.textContent = 'Unsaved changes'; pushHistory(); }; reader.readAsDataURL(file);
   });
   document.querySelector('#clearArtBtn').addEventListener('click', () => { form.dataset.artData = ''; artImage = null; render(); pushHistory(); });
-  document.querySelector('#saveBtn').addEventListener('click', () => saveCurrent());
+  document.querySelector('#chooseSecondaryArtBtn').addEventListener('click', () => document.querySelector('#secondaryArtFile').click());
+  document.querySelector('#secondaryArtFile').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (file.size > 12 * 1024 * 1024) return toast('Artwork must be under 12 MB');
+    const reader = new FileReader(); reader.onload = () => { form.dataset.secondaryArtData = reader.result; loadSecondaryArt(reader.result); saveStatus.textContent = 'Unsaved changes'; pushHistory(); }; reader.readAsDataURL(file);
+  });
+  document.querySelector('#clearSecondaryArtBtn').addEventListener('click', () => { form.dataset.secondaryArtData = ''; secondaryArtImage = null; render(); pushHistory(); });
+  document.querySelector('#saveBtn').addEventListener('click', saveActiveSet);
   document.querySelector('#clearCardBtn').addEventListener('click', clearCurrentCard);
   document.querySelector('#exportImageBtn').addEventListener('click', () => exportCard());
   document.querySelector('#exportProjectBtn').addEventListener('click', exportProject);
@@ -1534,8 +1624,8 @@
         execute: input => { if (!input?.fields || typeof input.fields !== 'object') throw new Error('fields must be an object'); setFormData({ ...getFormData(), ...input.fields, id: currentId }); saveStatus.textContent = 'Unsaved changes'; return { status: 'staged', id: currentId, name: getFormData().name }; }
       },
       {
-        name: 'save_current_card', title: 'Save current card', description: 'Save the current visible card to the local set library.',
-        inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: false, untrustedContentHint: false }, execute: () => { const card = saveCurrent(false); return { status: 'saved', id: card.id, name: card.name, totalCards: cards.length }; }
+        name: 'save_current_card', title: 'Save active set', description: 'Save the current card and the complete active set to the local library.',
+        inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: false, untrustedContentHint: false }, execute: () => { const card = saveActiveSet(); return { status: 'saved', id: card?.id, name: card?.name, totalCards: cards.length }; }
       }
     ];
     tools.forEach(tool => { try { Promise.resolve(context.registerTool(tool)).catch(() => {}); } catch (_) {} });

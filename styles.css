@@ -193,7 +193,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
   .mobile-preview-enabled .mobile-preview-dock { display: grid; }
   .tabs { position: relative; background: var(--panel); }
   .tab { min-height: 44px; }
-  .card-wrap { min-height: auto; padding: 1rem 0; overflow: hidden; }
+  .card-wrap { min-height: auto; padding: 1rem 0; overflow: auto; }
   #cardCanvas { width: min(100%, 506px); max-width: 100%; height: auto; max-height: none; }
   .stage-toolbar { align-items: flex-start; }
   .zoom-control { flex-wrap: wrap; justify-content: flex-end; }
