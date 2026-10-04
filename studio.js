@@ -9,6 +9,9 @@
   const REVISION_KEY = 'mechtitan-revisions-v1';
   const HORIZONTAL = new Set(['horizontal', 'split-combine']);
   const TWO_SIDED = new Set(['split-combine', 'flip', 'double-faced', 'composite-left', 'composite-right']);
+  const horizontalFrame = new Image();
+  horizontalFrame.onload = () => forge.render();
+  horizontalFrame.src = 'assets/horizontal-frame-v2.png';
   const $ = selector => document.querySelector(selector);
   const safeJson = (value, fallback) => { try { return JSON.parse(value); } catch (_) { return fallback; } };
   const projectId = () => `project-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -121,6 +124,100 @@
     const traits = secondary ? card.secondaryTraits : card.traits; ctx.fillText(plain(traits || card.rarity), x + 42, y + 70, w - 84);
     ctx.restore();
   }
+  function horizontalTextLayout(ctx, text, maxWidth, maxLines = 2) {
+    const words = plain(text).split(/\s+/).filter(Boolean);
+    for (let size = 27; size >= 13; size--) {
+      ctx.font = `500 ${size}px Arial`;
+      const lines = []; let line = '';
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      if (lines.length <= maxLines) return { lines, size, lineHeight: size * 1.05 };
+    }
+    ctx.font = '500 13px Arial';
+    const lines = []; let line = '';
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return { lines: lines.slice(0, maxLines), size: 13, lineHeight: 14 };
+  }
+  function drawHorizontalRules(ctx, card, box, upsideDown = false) {
+    const text = plain(card.rules);
+    const layout = horizontalTextLayout(ctx, text || 'Card ability text', box.w - 34, 2);
+    const align = card.rulesAlign || 'left';
+    const drawX = align === 'center' ? box.x + box.w / 2 : align === 'right' ? box.x + box.w - 17 : box.x + 17;
+    const startY = box.y + box.h / 2 - (layout.lines.length - 1) * layout.lineHeight / 2 + Number(card.rulesY || 0) * .12;
+    ctx.save();
+    if (upsideDown) {
+      const centerX = box.x + box.w / 2, centerY = box.y + box.h / 2;
+      ctx.translate(centerX, centerY); ctx.rotate(Math.PI); ctx.translate(-centerX, -centerY);
+    }
+    ctx.fillStyle = '#080a0c'; ctx.textAlign = align; ctx.textBaseline = 'middle';
+    ctx.font = `500 ${layout.size}px Arial`;
+    layout.lines.forEach((line, index) => ctx.fillText(line, drawX + Number(card.rulesX || 0) * .18, startY + index * layout.lineHeight, box.w - 34));
+    ctx.restore();
+  }
+  function drawHorizontalCard(ctx, card, art) {
+    const width = 900, height = 660;
+    const colors = themeColors[card.theme] || themeColors.titanium;
+    const topBox = { x: 52, y: 47, w: 796, h: 48 };
+    const artBox = { x: 49, y: 110, w: 800, h: 386 };
+    const nameStrip = { x: 49, y: 501, w: 800, h: 44 };
+    const bottomBox = { x: 52, y: 556, w: 796, h: 47 };
+
+    ctx.fillStyle = '#010407'; ctx.fillRect(0, 0, width, height);
+    if (horizontalFrame.complete && horizontalFrame.naturalWidth) ctx.drawImage(horizontalFrame, 0, 0, width, height);
+    else {
+      framePath(ctx, 6, 6, width - 12, height - 12, 34);
+      const shell = ctx.createLinearGradient(0, 0, width, height); shell.addColorStop(0, colors[1]); shell.addColorStop(.45, colors[0]); shell.addColorStop(1, '#010407');
+      ctx.fillStyle = shell; ctx.fill(); ctx.strokeStyle = colors[2]; ctx.lineWidth = 3; ctx.stroke();
+    }
+
+    // Reuse the clean paper from the blank upper panel so both rules boxes
+    // have the same texture and no example text remains baked into the frame.
+    if (horizontalFrame.complete && horizontalFrame.naturalWidth) {
+      const paperSource = { x: 86, y: 77, w: 1305, h: 74 };
+      ctx.drawImage(horizontalFrame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, topBox.x, topBox.y, topBox.w, topBox.h);
+      ctx.drawImage(horizontalFrame, paperSource.x, paperSource.y, paperSource.w, paperSource.h, bottomBox.x, bottomBox.y, bottomBox.w, bottomBox.h);
+    } else {
+      ctx.fillStyle = '#f3f2ee'; ctx.fillRect(topBox.x, topBox.y, topBox.w, topBox.h); ctx.fillRect(bottomBox.x, bottomBox.y, bottomBox.w, bottomBox.h);
+    }
+
+    ctx.save(); ctx.beginPath(); ctx.rect(artBox.x, artBox.y, artBox.w, artBox.h); ctx.clip();
+    if (art) {
+      const ratio = Math.max(artBox.w / art.width, artBox.h / art.height) * (Number(card.artScale || 100) / 100);
+      const aw = art.width * ratio, ah = art.height * ratio;
+      ctx.drawImage(art, artBox.x + (artBox.w - aw) / 2 + Number(card.artX || 0) * 1.5, artBox.y + (artBox.h - ah) / 2 + Number(card.artY || 0) * 1.25, aw, ah);
+    } else {
+      const field = ctx.createLinearGradient(artBox.x, artBox.y, artBox.x + artBox.w, artBox.y + artBox.h);
+      field.addColorStop(0, colors[1]); field.addColorStop(.6, '#102131'); field.addColorStop(1, colors[0]);
+      ctx.fillStyle = field; ctx.fillRect(artBox.x, artBox.y, artBox.w, artBox.h);
+      ctx.strokeStyle = `${colors[2]}72`; ctx.lineWidth = 2;
+      for (let sx = artBox.x - artBox.h; sx < artBox.x + artBox.w; sx += 50) { ctx.beginPath(); ctx.moveTo(sx, artBox.y); ctx.lineTo(sx + artBox.h, artBox.y + artBox.h); ctx.stroke(); }
+      ctx.fillStyle = '#dcecf3b8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 30px Arial'; ctx.fillText('UPLOAD UNIT ARTWORK', width / 2, artBox.y + artBox.h / 2 - 8);
+      ctx.font = '600 16px Arial'; ctx.fillText('ART TAB  •  PNG / JPEG / WEBP', width / 2, artBox.y + artBox.h / 2 + 27);
+    }
+    ctx.restore();
+
+    ctx.fillStyle = '#020304'; ctx.fillRect(nameStrip.x, nameStrip.y, nameStrip.w, nameStrip.h);
+    ctx.textBaseline = 'middle';
+    const title = plain(card.name) || 'CARD NAME';
+    ctx.font = `900 ${Math.min(31, Math.max(19, Number(card.titleSize || 100) * .27))}px Arial`;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+    ctx.fillText(card.uppercaseTitle === false ? title : title.toUpperCase(), nameStrip.x + 14 + Number(card.nameX || 0) * .18, nameStrip.y + nameStrip.h / 2 + Number(card.nameY || 0) * .15, nameStrip.w * .46);
+    const typeParts = [card.rarity === 'None' ? '' : card.rarity, plain(card.traits)].filter(Boolean);
+    ctx.font = '600 22px Arial'; ctx.textAlign = 'right';
+    ctx.fillText(typeParts.join(' • ') || plain(card.cardKind), nameStrip.x + nameStrip.w - 14, nameStrip.y + nameStrip.h / 2, nameStrip.w * .52);
+
+    drawHorizontalRules(ctx, card, bottomBox, false);
+    drawHorizontalRules(ctx, card, topBox, true);
+  }
   function drawCustom(ctx, card, width, height) {
     ctx.fillStyle = '#0a1017'; ctx.fillRect(0, 0, width, height);
     const layers = safeJson(card.customLayers, []);
@@ -138,6 +235,7 @@
     if ((!card.template || card.template === 'unit-standard') && card.previewFace === 'back') {
       const colors = themeColors[card.theme] || themeColors.titanium; const gradient = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, width * .7); gradient.addColorStop(0, colors[1]); gradient.addColorStop(.55, colors[0]); gradient.addColorStop(1, '#010305'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, width, height); framePath(ctx, 18, 18, width - 36, height - 36, 38); ctx.strokeStyle = colors[2]; ctx.lineWidth = 8; ctx.stroke(); ctx.strokeStyle = '#d6c49a'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#e8f7ff'; ctx.textAlign = 'center'; ctx.font = '900 58px Arial'; ctx.fillText('MECHTITAN', width / 2, height / 2); ctx.font = '700 22px Arial'; ctx.fillStyle = colors[2]; ctx.fillText('CARD FORGE', width / 2, height / 2 + 38);
     } else if (card.template === 'custom') drawCustom(ctx, card, width, height);
+    else if (card.template === 'horizontal') drawHorizontalCard(ctx, card, art);
     else if (card.template === 'split-combine') {
       drawPanel(ctx, card, 8, 8, 438, 644, art, false); drawPanel(ctx, card, 454, 8, 438, 644, art, true);
       ctx.fillStyle = '#000'; ctx.fillRect(420, 292, 60, 76); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '900 15px Arial'; ctx.fillText(card.combineEnabled ? 'COMBINE' : 'SPLIT', 450, 335);

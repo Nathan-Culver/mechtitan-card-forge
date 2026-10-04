@@ -487,9 +487,11 @@
     c.restore();
     c.restore();
     c.save(); c.fillStyle = '#050505';
-    // Keep the dial arm clear of the Speed letter: the original pointer was
-    // visually heavy and reached far enough into the oval to touch "F".
-    c.beginPath(); c.moveTo(markerX - 3, y + 3); c.lineTo(markerX + 3, y + 3); c.lineTo(markerX, y + 8.5); c.closePath(); c.fill();
+    // Only Fast needs the compact arm: its marker sits close enough to the
+    // centered "F" that the standard pointer can touch the letter.
+    const markerHalfWidth = speed === 'F' ? 3 : 6;
+    const markerTipY = speed === 'F' ? y + 8.5 : y + 14;
+    c.beginPath(); c.moveTo(markerX - markerHalfWidth, y + 3); c.lineTo(markerX + markerHalfWidth, y + 3); c.lineTo(markerX, markerTipY); c.closePath(); c.fill();
     c.restore();
     strokeEmbossedEllipse(c, cx, cy, rx, ry, 3.4);
   }
