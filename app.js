@@ -37,7 +37,7 @@
 
   const defaults = {
     projectId: '', template: 'unit-standard', cardKind: 'Unit', previewFace: 'front', rulesAlign: 'left',
-    secondaryName: '', secondaryConstruction: '-', secondaryOperation: '-', secondaryCycle: '-', secondaryAssetL: '', secondaryAssetP: '', secondaryAssetS: '', secondaryAssetT: '', secondaryAssetU: '', secondaryLoadout: '', secondaryTraits: '', secondaryRarity: 'None', secondaryRules: '', secondaryFlavor: '', secondarySpeed: '-', secondaryAttack: '-', secondaryArmor: '-', secondaryStructure: '-', secondaryArtData: '', secondaryArtScale: 100, secondaryArtX: 0, secondaryArtY: 0, combineEnabled: false, compositePairId: '', customLayers: '',
+    secondaryName: '', secondaryConstruction: '-', secondaryOperation: '-', secondaryCycle: '-', secondaryAssetL: '', secondaryAssetP: '', secondaryAssetS: '', secondaryAssetT: '', secondaryAssetU: '', secondaryLoadout: '', secondaryTraits: '', secondaryRarity: 'None', secondaryRules: '', secondaryFlavor: '', secondarySpeed: '-', secondaryAttack: '-', secondaryArmor: '-', secondaryStructure: '-', secondaryFaction: '', secondaryArtist: '', secondaryCopyright: '', secondarySetCode: '', secondaryCollector: '', secondaryShowTags: false, secondaryRulesAlign: 'left', secondaryArtData: '', secondaryArtScale: 100, secondaryArtX: 0, secondaryArtY: 0, combineEnabled: false, compositePairId: '', customLayers: '',
     name: '', construction: '-', operation: '-', assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
     loadout: '', traits: '', rules: '', flavor: '', speed: '-',
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
@@ -878,6 +878,7 @@
       const secondary = key => {
         const name = `secondary${key[0].toUpperCase()}${key.slice(1)}`;
         const value = source[name];
+        if (source.template === 'split-combine') return value ?? '';
         return value === '' || value == null ? source[key] : value;
       };
       return {
@@ -887,9 +888,11 @@
         assetL: suppressBackCosts ? '' : secondary('assetL'), assetP: suppressBackCosts ? '' : secondary('assetP'),
         assetS: suppressBackCosts ? '' : secondary('assetS'), assetT: suppressBackCosts ? '' : secondary('assetT'),
         assetU: suppressBackCosts ? '' : secondary('assetU'), loadout: secondary('loadout'), traits: secondary('traits'),
-        rarity: secondary('rarity'), rules: secondary('rules'), flavor: secondary('flavor'),
+        rarity: secondary('rarity'), rules: secondary('rules'), flavor: secondary('flavor'), rulesAlign: secondary('rulesAlign'),
         speed: secondary('speed'), attack: secondary('attack'), armor: secondary('armor'), structure: secondary('structure'),
-        showTags: Boolean(secondary('loadout')), showTypes: true
+        faction: secondary('faction'), artist: secondary('artist'), copyright: secondary('copyright'),
+        setCode: secondary('setCode'), collector: secondary('collector'),
+        showTags: Boolean(source.secondaryShowTags), showTypes: true
       };
     };
     const renderRegularFace = (face, faceArt) => {
@@ -902,14 +905,19 @@
 
     if (card.template === 'flip') {
       const top = renderRegularFace(card, artImage);
-      const bottom = renderRegularFace(secondaryFace(card), secondaryArtImage || artImage);
-      const half = (face, faceArt) => {
+      // A flip identity is already in play after rotation, so its inverted
+      // half has no Construction, Asset, or Cycle costs. Operation remains.
+      const bottom = renderRegularFace(secondaryFace(card, true), secondaryArtImage || artImage);
+      const half = face => {
         const surface = document.createElement('canvas'); surface.width = W; surface.height = 305;
         const side = surface.getContext('2d');
         // Preserve the real regular-card header and its lower rules/footer
         // frame, then compress those two regions into one playable flip half.
-        side.drawImage(face, 0, 0, W, 190, 0, 0, W, 158);
-        side.drawImage(face, 0, 600, W, 270, 0, 158, W, 147);
+        // End the identity header at the metadata rail; do not carry a thin
+        // strip of the artwork into the rules box. This keeps both halves in
+        // the clean header → type rail → text-panel order of the reference.
+        side.drawImage(face, 0, 0, W, 178, 0, 0, W, 145);
+        side.drawImage(face, 0, 600, W, 270, 0, 145, W, 160);
         return surface;
       };
       const topHalf = half(top);
@@ -1580,9 +1588,11 @@
     if (event.target.value !== 'split-combine' || form.elements.secondaryName.value) return;
     const pairs = {
       name:'secondaryName', construction:'secondaryConstruction', operation:'secondaryOperation', cycle:'secondaryCycle', assetL:'secondaryAssetL', assetP:'secondaryAssetP', assetS:'secondaryAssetS', assetT:'secondaryAssetT', assetU:'secondaryAssetU',
-      loadout:'secondaryLoadout', traits:'secondaryTraits', rarity:'secondaryRarity', rules:'secondaryRules', flavor:'secondaryFlavor', speed:'secondarySpeed', attack:'secondaryAttack', armor:'secondaryArmor', structure:'secondaryStructure'
+      loadout:'secondaryLoadout', traits:'secondaryTraits', rarity:'secondaryRarity', rules:'secondaryRules', flavor:'secondaryFlavor', speed:'secondarySpeed', attack:'secondaryAttack', armor:'secondaryArmor', structure:'secondaryStructure',
+      faction:'secondaryFaction', artist:'secondaryArtist', copyright:'secondaryCopyright', setCode:'secondarySetCode', collector:'secondaryCollector', rulesAlign:'secondaryRulesAlign'
     };
     Object.entries(pairs).forEach(([source, target]) => { form.elements[target].value = form.elements[source].value; });
+    form.elements.secondaryShowTags.checked = form.elements.showTags.checked;
     form.dataset.secondaryArtData = form.dataset.artData || '';
     form.elements.secondaryArtScale.value = form.elements.artScale.value; form.elements.secondaryArtX.value = form.elements.artX.value; form.elements.secondaryArtY.value = form.elements.artY.value;
     loadSecondaryArt(form.dataset.secondaryArtData); updateOutputs(); render(); pushHistory();

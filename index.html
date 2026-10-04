@@ -6,10 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261004-5">
+  <link rel="stylesheet" href="styles.css?v=20261004-7">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261004-5"></script>
-  <script defer src="studio.js?v=20261004-5"></script>
+  <script defer src="app.js?v=20261004-7"></script>
+  <script defer src="studio.js?v=20261004-7"></script>
 </head>
 <body>
   <header class="topbar">
@@ -129,24 +129,29 @@
             <div class="field"><label for="faction">Faction</label><input id="faction" name="faction" value="Clan Wolf"></div>
             <div class="field"><label for="artist">Artist credit</label><input id="artist" name="artist" placeholder="Artist name"></div>
           </div>
-          <section id="secondaryFaceFields" class="secondary-face-fields" hidden>
-            <h3>Second half / back face</h3>
+          <section id="secondaryFaceFields" class="secondary-face-fields" hidden tabindex="-1">
+            <h3 id="secondaryFaceHeading">Second half / back face</h3>
             <div class="field full"><label for="secondaryName">Name</label><input id="secondaryName" name="secondaryName"></div>
             <div class="grid-3">
-              <div class="field"><label for="secondaryConstruction">Construction</label><input id="secondaryConstruction" name="secondaryConstruction" type="text" value="-"></div>
-              <div class="field"><label for="secondaryOperation">Operation</label><input id="secondaryOperation" name="secondaryOperation" type="text" value="-"></div>
-              <div class="field"><label for="secondaryCycle">Cycle</label><select id="secondaryCycle" name="secondaryCycle"><option value="-">None</option><option>1</option><option>2</option><option>3</option><option>L</option><option>P</option><option>S</option><option>T</option><option>U</option></select></div>
+              <div id="secondaryConstructionField" class="field"><label for="secondaryConstruction">Construction</label><input id="secondaryConstruction" name="secondaryConstruction" type="text" value="-"></div>
+              <div id="secondaryOperationField" class="field"><label for="secondaryOperation">Operation</label><input id="secondaryOperation" name="secondaryOperation" type="text" value="-"></div>
+              <div id="secondaryCycleField" class="field"><label for="secondaryCycle">Cycle</label><select id="secondaryCycle" name="secondaryCycle"><option value="-">None</option><option>1</option><option>2</option><option>3</option><option>L</option><option>P</option><option>S</option><option>T</option><option>U</option></select></div>
             </div>
-            <fieldset class="asset-fieldset"><legend>Second-half Asset costs</legend><div class="asset-grid">
+            <fieldset id="secondaryAssetCosts" class="asset-fieldset"><legend>Second-half Asset costs</legend><div class="asset-grid">
               <label class="asset asset-l"><b>L</b><input name="secondaryAssetL" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-p"><b>P</b><input name="secondaryAssetP" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-s"><b>S</b><input name="secondaryAssetS" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-t"><b>T</b><input name="secondaryAssetT" type="number" min="1" max="5" placeholder="—"></label><label class="asset asset-u"><b>U</b><input name="secondaryAssetU" type="number" min="1" max="5" placeholder="—"></label>
             </div></fieldset>
             <div class="field full"><label for="secondaryLoadout">Tags</label><input id="secondaryLoadout" name="secondaryLoadout"></div>
+            <label class="toggle-row"><input id="secondaryShowTags" name="secondaryShowTags" type="checkbox"><span>Show Tags box on this card</span></label>
             <div class="field full"><label for="secondaryTraits">Types / Subtypes</label><input id="secondaryTraits" name="secondaryTraits"></div>
             <div class="field full"><label for="secondaryRarity">Rarity</label><select id="secondaryRarity" name="secondaryRarity"><option>Common</option><option>Uncommon</option><option>Rare</option><option>Unique</option><option value="None">None (0 bolts)</option></select></div>
             <div class="field full"><label for="secondaryRules">Rules text</label><textarea id="secondaryRules" name="secondaryRules" rows="4"></textarea></div>
+            <div class="field full"><label for="secondaryRulesAlign">Rules alignment</label><select id="secondaryRulesAlign" name="secondaryRulesAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
             <div class="field full"><label for="secondaryFlavor">Flavor text</label><textarea id="secondaryFlavor" name="secondaryFlavor" rows="2"></textarea></div>
             <div class="grid-3"><div class="field"><label for="secondarySpeed">Speed</label><select id="secondarySpeed" name="secondarySpeed"><option value="-">-</option><option>XS</option><option>S</option><option>M</option><option>F</option><option>XF</option></select></div><div class="field"><label for="secondaryAttack">Attack</label><input id="secondaryAttack" name="secondaryAttack" type="text" value="-"></div><div class="field"><label for="secondaryArmor">Armor</label><input id="secondaryArmor" name="secondaryArmor" type="text" value="-"></div></div>
             <div class="field full"><label for="secondaryStructure">Structure</label><input id="secondaryStructure" name="secondaryStructure" type="text" value="-"></div>
+            <div class="grid-2"><div class="field"><label for="secondaryFaction">Faction</label><input id="secondaryFaction" name="secondaryFaction"></div><div class="field"><label for="secondaryArtist">Artist credit</label><input id="secondaryArtist" name="secondaryArtist" placeholder="Artist name"></div></div>
+            <div class="field full"><label for="secondaryCopyright">Copyright / legal line</label><input id="secondaryCopyright" name="secondaryCopyright"></div>
+            <div class="grid-2"><div class="field"><label for="secondarySetCode">Set code</label><input id="secondarySetCode" name="secondarySetCode" maxlength="8"></div><div class="field"><label for="secondaryCollector">Collector no.</label><input id="secondaryCollector" name="secondaryCollector" maxlength="12"></div></div>
             <label class="toggle-row"><input id="combineEnabled" name="combineEnabled" type="checkbox"><span>Combine — both halves may be played together</span></label>
             <div class="field full"><label for="compositePairId">Composite pair ID</label><input id="compositePairId" name="compositePairId" placeholder="e.g. leviathan-alpha"></div>
           </section>

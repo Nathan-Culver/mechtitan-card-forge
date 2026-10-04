@@ -512,8 +512,18 @@
 
   function updateTemplateUi() {
     const card = forge.getFormData(); const dual = TWO_SIDED.has(card.template);
-    $('#secondaryFaceFields').hidden = !dual; $('#secondaryArtControls').hidden = !dual; $('#faceControls').hidden = !dual || card.template === 'split-combine' || card.template === 'flip'; $('#customLayerEditor').hidden = card.template !== 'custom';
-    $('#frontFaceBtn').classList.toggle('active', card.previewFace !== 'back'); $('#backFaceBtn').classList.toggle('active', card.previewFace === 'back');
+    const split = card.template === 'split-combine';
+    $('#secondaryFaceFields').hidden = !dual; $('#secondaryArtControls').hidden = !dual; $('#faceControls').hidden = !dual || card.template === 'flip'; $('#customLayerEditor').hidden = card.template !== 'custom';
+    $('#frontFaceBtn').textContent = split ? 'Edit left card' : 'Front / top';
+    $('#backFaceBtn').textContent = split ? 'Edit right card' : 'Back / bottom';
+    $('#secondaryFaceHeading').textContent = split ? 'Right card' : 'Second half / back face';
+    $('#secondaryArtControls h3').textContent = split ? 'Right-card artwork' : 'Second-half artwork';
+    const flip = card.template === 'flip';
+    $('#secondaryConstructionField').hidden = flip;
+    $('#secondaryCycleField').hidden = flip;
+    $('#secondaryAssetCosts').hidden = flip;
+    const splitSide = document.querySelector('#cardForm').dataset.splitEditorSide || 'left';
+    $('#frontFaceBtn').classList.toggle('active', split ? splitSide === 'left' : card.previewFace !== 'back'); $('#backFaceBtn').classList.toggle('active', split ? splitSide === 'right' : card.previewFace === 'back');
     document.querySelectorAll('[name="operation"], [name="speed"], [name="attack"], [name="armor"], [name="structure"]').forEach(input => input.closest('.field')?.classList.toggle('conditional-hidden', card.cardKind !== 'Unit'));
     const horizontal = HORIZONTAL.has(card.template); const compositeBack = card.template.startsWith('composite') && card.previewFace === 'back';
     $('#dimensionsLabel').textContent = card.template === 'split-combine' ? '5.5 × 3.75 in split card' : horizontal || compositeBack ? '3.75 × 2.75 in with bleed' : '2.75 × 3.75 in with bleed';
@@ -605,7 +615,14 @@
       persistProjects(); captureProjectRevision('Cards deleted'); renderProjects();
     }, 0));
     $('#template').addEventListener('change', () => { updateTemplateUi(); forge.render(); }); $('#cardKind').addEventListener('change', updateTemplateUi);
-    $('#frontFaceBtn').addEventListener('click', () => { $('#previewFace').value = 'front'; updateTemplateUi(); forge.render(); }); $('#backFaceBtn').addEventListener('click', () => { $('#previewFace').value = 'back'; updateTemplateUi(); forge.render(); });
+    $('#frontFaceBtn').addEventListener('click', () => {
+      if ($('#template').value === 'split-combine') { $('#cardForm').dataset.splitEditorSide = 'left'; updateTemplateUi(); $('#name').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#name').focus(); return; }
+      $('#previewFace').value = 'front'; updateTemplateUi(); forge.render();
+    });
+    $('#backFaceBtn').addEventListener('click', () => {
+      if ($('#template').value === 'split-combine') { $('#cardForm').dataset.splitEditorSide = 'right'; updateTemplateUi(); $('#secondaryFaceFields').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('#secondaryName').focus(); return; }
+      $('#previewFace').value = 'back'; updateTemplateUi(); forge.render();
+    });
     $('#cardForm').addEventListener('input', event => { if (event.target.id === 'template' || event.target.id === 'cardKind') updateTemplateUi(); });
     $('#shareProjectBtn').addEventListener('click', () => showDialog('Share card or project', `<p>Public links are unlisted and self-contained. Private links encrypt the contents with a passphrase.</p><div class="share-options"><button id="publicShare" type="button" class="primary">Public project link</button><button id="privateShare" type="button">Private project link</button><button id="publicCardShare" type="button">Public card link</button><button id="privateCardShare" type="button">Private card link</button></div>`));
     $('#studioDialog').addEventListener('click', event => {
