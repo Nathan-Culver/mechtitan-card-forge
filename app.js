@@ -874,19 +874,77 @@
   }
 
   function drawCard(target, card, scale = 1, guides = false) {
+    const secondaryFace = (source, suppressBackCosts = false) => {
+      const secondary = key => {
+        const name = `secondary${key[0].toUpperCase()}${key.slice(1)}`;
+        const value = source[name];
+        return value === '' || value == null ? source[key] : value;
+      };
+      return {
+        ...source, template: 'unit-standard', previewFace: 'front',
+        name: secondary('name'), construction: suppressBackCosts ? '-' : secondary('construction'),
+        operation: secondary('operation'), cycle: suppressBackCosts ? '-' : secondary('cycle'),
+        assetL: suppressBackCosts ? '' : secondary('assetL'), assetP: suppressBackCosts ? '' : secondary('assetP'),
+        assetS: suppressBackCosts ? '' : secondary('assetS'), assetT: suppressBackCosts ? '' : secondary('assetT'),
+        assetU: suppressBackCosts ? '' : secondary('assetU'), loadout: secondary('loadout'), traits: secondary('traits'),
+        rarity: secondary('rarity'), rules: secondary('rules'), flavor: secondary('flavor'),
+        speed: secondary('speed'), attack: secondary('attack'), armor: secondary('armor'), structure: secondary('structure'),
+        showTags: Boolean(secondary('loadout')), showTypes: true
+      };
+    };
+    const renderRegularFace = (face, faceArt) => {
+      const surface = document.createElement('canvas'); surface.width = W; surface.height = H;
+      const savedArt = artImage; artImage = faceArt || null;
+      try { drawCard(surface.getContext('2d'), { ...face, template: 'unit-standard', previewFace: 'front' }, 1, false); }
+      finally { artImage = savedArt; }
+      return surface;
+    };
+
+    if (card.template === 'flip') {
+      const top = renderRegularFace(card, artImage);
+      const bottom = renderRegularFace(secondaryFace(card), secondaryArtImage || artImage);
+      const half = (face, faceArt) => {
+        const surface = document.createElement('canvas'); surface.width = W; surface.height = 305;
+        const side = surface.getContext('2d');
+        // Preserve the real regular-card header and its lower rules/footer
+        // frame, then compress those two regions into one playable flip half.
+        side.drawImage(face, 0, 0, W, 190, 0, 0, W, 158);
+        side.drawImage(face, 0, 600, W, 270, 0, 158, W, 147);
+        return surface;
+      };
+      const topHalf = half(top);
+      const bottomHalf = half(bottom);
+      target.save(); target.scale(scale, scale); target.clearRect(0, 0, W, H);
+      target.drawImage(topHalf, 0, 0);
+      // The central art is shared by both orientations, matching a physical
+      // flip card whose second identity is activated by rotating the card.
+      target.drawImage(top, 30, 180, 600, 420, 30, 290, 600, 320);
+      target.save(); target.translate(W, H); target.rotate(Math.PI);
+      target.drawImage(bottomHalf, 0, 0);
+      target.restore();
+      target.restore();
+      return;
+    }
+
+    if (card.template === 'split-combine') {
+      const left = renderRegularFace(card, artImage);
+      const right = renderRegularFace(secondaryFace(card), secondaryArtImage || artImage);
+      target.save(); target.scale(scale, scale); target.clearRect(0, 0, 1320, 900);
+      target.drawImage(left, 0, 0); target.drawImage(right, 660, 0);
+      target.restore();
+      return;
+    }
+    if (card.template?.startsWith('composite') && card.previewFace === 'back') {
+      const fullCard = renderRegularFace(secondaryFace(card), secondaryArtImage || artImage);
+      const sourceY = card.template === 'composite-left' ? 0 : H / 2;
+      target.save(); target.scale(scale, scale); target.clearRect(0, 0, 900, 660);
+      target.drawImage(fullCard, 0, sourceY, W, H / 2, 0, 0, 900, 660);
+      target.restore();
+      return;
+    }
     if (card.template === 'double-faced') {
       const back = card.previewFace === 'back';
-      const face = back ? {
-        ...card, template: 'unit-standard', previewFace: 'front',
-        name: card.secondaryName || card.name,
-        construction: '-', operation: card.secondaryOperation, cycle: '-',
-        assetL: '', assetP: '', assetS: '', assetT: '', assetU: '',
-        loadout: card.secondaryLoadout, traits: card.secondaryTraits,
-        rarity: card.secondaryRarity, rules: card.secondaryRules, flavor: card.secondaryFlavor,
-        speed: card.secondarySpeed, attack: card.secondaryAttack,
-        armor: card.secondaryArmor, structure: card.secondaryStructure,
-        showTags: Boolean(card.secondaryLoadout), showTypes: true
-      } : { ...card, template: 'unit-standard', previewFace: 'front' };
+      const face = back ? secondaryFace(card, true) : { ...card, template: 'unit-standard', previewFace: 'front' };
       const savedArt = artImage;
       if (back) artImage = secondaryArtImage;
       try { drawCard(target, face, scale, guides); } finally { artImage = savedArt; }
@@ -906,37 +964,22 @@
     const my = value => trim.y + value * trim.h / 1490;
     const mw = value => value * trim.w / 1056;
     const mh = value => value * trim.h / 1490;
-    const tallTextFrame = card.template === 'unit-tall-text' && layerImages.tallFrame;
-    const extendedArtFrame = card.template === 'unit-extended-art' && layerImages.extendedFrame;
-    if (extendedArtFrame) {
-      // This reference is already composed at the complete bleed aspect ratio:
-      // its artwork opening deliberately reaches both horizontal canvas edges.
-      c.drawImage(extendedArtFrame, 0, 0, W, H);
-      drawFramePaperTexture(c, 60, 60, 530, 91, 620, false, 90, 530, 91);
-      c.save();
-      c.beginPath(); c.moveTo(82, 586); c.lineTo(578, 586); c.lineTo(592, 600); c.lineTo(592, 817); c.lineTo(569, 840); c.lineTo(91, 840); c.lineTo(69, 817); c.lineTo(69, 600); c.closePath(); c.clip();
-      drawFramePaperTexture(c, 69, 586, 523, 254, 620, false, 85, 500, 175);
-      c.restore();
-    } else if (tallTextFrame) {
-      // The supplied reference includes a dark presentation margin. Crop to
-      // the true card bounds so its blue/gold shell fits the existing trim.
-      c.drawImage(tallTextFrame, 50, 50, 975, 1365, trim.x, trim.y, trim.w, trim.h);
-      // Remove the reference card's printed example copy while retaining the
-      // supplied frame geometry. The normal live renderer repopulates these
-      // surfaces with editable costs, title, rules, flavor, credit, and stats.
-      drawFramePaperTexture(c, 60, 60, 530, 91, 620, false, 90, 530, 91);
-      c.save();
-      c.beginPath(); c.moveTo(82, 586); c.lineTo(578, 586); c.lineTo(592, 600); c.lineTo(592, 817); c.lineTo(569, 840); c.lineTo(91, 840); c.lineTo(69, 817); c.lineTo(69, 600); c.closePath(); c.clip();
-      drawFramePaperTexture(c, 69, 586, 523, 254, 620, false, 85, 500, 175);
-      c.restore();
-    } else if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
+    if (layerImages.frame) c.drawImage(layerImages.frame, trim.x, trim.y, trim.w, trim.h);
     else if (layerImages.reference) c.drawImage(layerImages.reference, trim.x, trim.y, trim.w, trim.h);
+    if (card.template === 'unit-tall-text') {
+      // The tall version is the regular frame with only its paper text panel
+      // extended upward. The original sidewalls, corners, and footer remain.
+      c.save();
+      c.beginPath(); c.moveTo(82, 450); c.lineTo(578, 450); c.lineTo(592, 464); c.lineTo(592, 817); c.lineTo(569, 840); c.lineTo(91, 840); c.lineTo(69, 817); c.lineTo(69, 464); c.closePath(); c.clip();
+      drawFramePaperTexture(c, 69, 450, 523, 390, 620, false, 85, 500, 175);
+      c.restore();
+    }
 
     const metadataHidden = !card.showTags && !card.showTypes;
     const singleMetadataRow = card.showTags !== card.showTypes;
     const typesOnly = !card.showTags && card.showTypes;
     const artTopSource = metadataHidden ? 155 : singleMetadataRow ? 219 : 284;
-    const artBottomSource = card.template === 'unit-tall-text' ? 960 : card.template === 'unit-extended-art' ? 978 : 1010;
+    const artBottomSource = card.template === 'unit-tall-text' ? 760 : 1010;
     const hasAssetCosts = ['L', 'P', 'S', 'T', 'U'].some(key => card[`asset${key}`] !== '');
     const artLeftSource = hasAssetCosts ? 78 : 42;
     const artRightSource = 978;
@@ -1219,10 +1262,12 @@
     // A generated no-art field is already clean and continuous here. Copying
     // its preceding band would restart the diagonal pattern just above the
     // rarity rail, producing broken line work in the default card.
+    const rarityRailY = card.template === 'unit-tall-text' ? 450 : 600;
+    const rarityHousingY = rarityRailY - 18;
     if (artImage) {
       const rarityArtPatch = document.createElement('canvas'); rarityArtPatch.width = 142; rarityArtPatch.height = 25;
-      rarityArtPatch.getContext('2d').drawImage(c.canvas, 450 * scale, 550 * scale, 142 * scale, 25 * scale, 0, 0, 142, 25);
-      c.drawImage(rarityArtPatch, 450, 575, 142, 25);
+      rarityArtPatch.getContext('2d').drawImage(c.canvas, 450 * scale, (rarityRailY - 50) * scale, 142 * scale, 25 * scale, 0, 0, 142, 25);
+      c.drawImage(rarityArtPatch, 450, rarityRailY - 25, 142, 25);
     }
 
     const rarityCount = { None: 0, Unique: 1, Rare: 2, Uncommon: 3, Common: 4 }[card.rarity] ?? 4;
@@ -1230,31 +1275,31 @@
     if (rarityCount > 0) {
       const boltHousingWidth = rarityCount * 22 + 2;
       const boltHousingLeft = boltHousingRight - boltHousingWidth;
-      const boltHousingFill = c.createLinearGradient(0, 582, 0, 601);
+      const boltHousingFill = c.createLinearGradient(0, rarityHousingY, 0, rarityRailY + 1);
       boltHousingFill.addColorStop(0, '#596369'); boltHousingFill.addColorStop(.16, '#1b2d36'); boltHousingFill.addColorStop(.42, '#05080a'); boltHousingFill.addColorStop(1, '#102f3e');
       c.fillStyle = boltHousingFill; c.strokeStyle = '#020406'; c.lineWidth = 2.4;
-      c.beginPath(); c.moveTo(boltHousingLeft + 5, 582); c.lineTo(boltHousingRight, 582); c.lineTo(boltHousingRight, 601); c.lineTo(boltHousingLeft, 601); c.closePath(); c.fill(); c.stroke();
+      c.beginPath(); c.moveTo(boltHousingLeft + 5, rarityHousingY); c.lineTo(boltHousingRight, rarityHousingY); c.lineTo(boltHousingRight, rarityRailY + 1); c.lineTo(boltHousingLeft, rarityRailY + 1); c.closePath(); c.fill(); c.stroke();
       // The bright leading bevel makes the moving left sidewall readable as
       // bolt counts change, while the housing stays inside the frame mount.
       c.strokeStyle = '#748086'; c.lineWidth = 1.25;
-      c.beginPath(); c.moveTo(boltHousingLeft + 5, 583); c.lineTo(boltHousingLeft + 1, 599); c.stroke();
+      c.beginPath(); c.moveTo(boltHousingLeft + 5, rarityHousingY + 1); c.lineTo(boltHousingLeft + 1, rarityRailY - 1); c.stroke();
       c.strokeStyle = 'rgba(73, 154, 184, .7)'; c.lineWidth = 1;
-      c.beginPath(); c.moveTo(boltHousingLeft + 6, 584); c.lineTo(boltHousingRight, 584); c.stroke();
+      c.beginPath(); c.moveTo(boltHousingLeft + 6, rarityHousingY + 2); c.lineTo(boltHousingRight, rarityHousingY + 2); c.stroke();
       for (let i = 0; i < rarityCount; i++) {
         // Keep the bolt row seated against the right side while the housing
         // contracts only from its left edge; the frame-side edge never moves.
         const boltCenterX = boltHousingRight - 12 - (rarityCount - 1 - i) * 22;
-        if (layerImages.bolt) c.drawImage(layerImages.bolt, boltCenterX - 8, 584, 16, 16);
-        else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(boltCenterX, 592, 7, 0, Math.PI * 2); c.fill(); }
+        if (layerImages.bolt) c.drawImage(layerImages.bolt, boltCenterX - 8, rarityHousingY + 2, 16, 16);
+        else { c.fillStyle = '#cfd2d4'; c.beginPath(); c.arc(boltCenterX, rarityHousingY + 10, 7, 0, Math.PI * 2); c.fill(); }
       }
     }
     // Rebuild the uninterrupted frame rail last so neither the mount nor the
     // bolt housing can overlap it.
-    const rarityRail = c.createLinearGradient(0, 600, 0, 610);
+    const rarityRail = c.createLinearGradient(0, rarityRailY, 0, rarityRailY + 10);
     rarityRail.addColorStop(0, '#02070b'); rarityRail.addColorStop(.28, '#0c4a69'); rarityRail.addColorStop(.6, '#021724'); rarityRail.addColorStop(1, '#000407');
-    c.fillStyle = rarityRail; c.fillRect(457, 600, 135, 10);
-    c.strokeStyle = '#020508'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(457, 600); c.lineTo(592, 600); c.moveTo(457, 610); c.lineTo(592, 610); c.stroke();
-    c.strokeStyle = 'rgba(40, 124, 158, .72)'; c.lineWidth = 1; c.beginPath(); c.moveTo(458, 603); c.lineTo(591, 603); c.stroke();
+    c.fillStyle = rarityRail; c.fillRect(457, rarityRailY, 135, 10);
+    c.strokeStyle = '#020508'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(457, rarityRailY); c.lineTo(592, rarityRailY); c.moveTo(457, rarityRailY + 10); c.lineTo(592, rarityRailY + 10); c.stroke();
+    c.strokeStyle = 'rgba(40, 124, 158, .72)'; c.lineWidth = 1; c.beginPath(); c.moveTo(458, rarityRailY + 3); c.lineTo(591, rarityRailY + 3); c.stroke();
 
     c.fillStyle = '#080808'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
     // Ability text stays regular-weight unless the editor explicitly applies
@@ -1262,11 +1307,11 @@
     // not silently change the user's typography.
     const ruleSegments = parseRichTextSegments(card.rules, { weight: 400, size: 20.5, color: '#080808' });
     const tallRules = card.template === 'unit-tall-text';
-    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, (tallRules ? 625 : 653) + card.rulesY, 486, 24, tallRules ? 6 : 4);
+    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, (tallRules ? 497 : 653) + card.rulesY, 486, 24, tallRules ? 9 : 4);
     if (card.flavor) {
       const flavorSegments = parseRichTextSegments(card.flavor, { style: 'italic', weight: 400, size: 21, color: '#080808' });
       const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false);
-      const flavorY = (tallRules ? 747 : 764) - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
+      const flavorY = (tallRules ? 718 : 764) - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
       drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, tallRules ? 4 : 3);
     }
 

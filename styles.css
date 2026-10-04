@@ -102,7 +102,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
 .zoom-control { display: flex; align-items: center; gap: .6rem; }
 .zoom-control input { width: 120px; }
 .card-wrap { flex: 1; min-height: 620px; display: grid; place-items: center; padding: 1rem; overflow: auto; }
-#cardCanvas { display: block; width: min(100%, 506px); height: auto; box-shadow: var(--shadow); background: #111; cursor: none; }
+#cardCanvas { display: block; width: min(100%, 506px); max-width: 100%; height: auto; box-shadow: var(--shadow); background: #111; cursor: none; }
 .stage .card-wrap, .stage .card-wrap * {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E") 0 0, none !important;
 }
