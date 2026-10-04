@@ -6,10 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261003-2">
+  <link rel="stylesheet" href="styles.css?v=20261003-3">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261003-2"></script>
-  <script defer src="studio.js?v=20261003-2"></script>
+  <script defer src="app.js?v=20261003-3"></script>
+  <script defer src="studio.js?v=20261003-3"></script>
 </head>
 <body>
   <header class="topbar">
@@ -90,7 +90,7 @@
           <div class="grid-3 stat-cost-grid">
             <div class="field"><label for="construction">Construction</label><input id="construction" name="construction" type="text" inputmode="numeric" pattern="-|[0-9]|1[0-9]|20" maxlength="2" value="-"></div>
             <div class="field"><label for="operation">Operation</label><input id="operation" name="operation" type="text" inputmode="numeric" pattern="-|[0-5]" maxlength="1" value="-"></div>
-            <div class="field"><label for="cycle">Cycle</label><select id="cycle" name="cycle"><option value="-">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+            <div class="field"><label for="cycle">Cycle</label><select id="cycle" name="cycle"><optgroup label="Resource value"><option value="-">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></optgroup><optgroup label="Asset value"><option value="L">L — Logistics</option><option value="P">P — Politics</option><option value="S">S — Strategics</option><option value="T">T — Tactics</option><option value="U">U — Support</option></optgroup></select></div>
           </div>
           <fieldset class="asset-fieldset">
             <legend>Asset costs</legend>

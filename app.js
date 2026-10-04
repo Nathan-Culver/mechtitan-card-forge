@@ -3,7 +3,8 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 6;
+  const DATA_VERSION = 7;
+  const ASSET_COLORS = { L: '#0b5fae', P: '#9c4dcc', S: '#EDD012', T: '#8b1e2d', U: '#117d45' };
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -67,6 +68,12 @@
   function removableStat(value, min, max, fallback) {
     return String(value ?? '').trim() === '-' ? '-' : clamp(value, min, max, fallback);
   }
+  function cycleValue(value) {
+    const normalized = String(value ?? '').trim().toUpperCase();
+    if (normalized === '' || normalized === '-') return '-';
+    if (Object.hasOwn(ASSET_COLORS, normalized)) return normalized;
+    return removableStat(normalized, 1, 3, 1);
+  }
   function toast(message) {
     const el = document.querySelector('#toast');
     el.textContent = message;
@@ -86,7 +93,7 @@
       assetL: assetValue(merged.assetL), assetP: assetValue(merged.assetP), assetS: assetValue(merged.assetS), assetT: assetValue(merged.assetT), assetU: assetValue(merged.assetU),
       speed: ['XS','S','M','F','XF','-'].includes(String(merged.speed).toUpperCase()) ? String(merged.speed).toUpperCase() : 'M',
       attack: removableStat(merged.attack, 0, 20, 0), armor: removableStat(merged.armor, 0, 5, 0), structure: removableStat(merged.structure, 1, 30, 1),
-      cycle: merged.cycle === '' || merged.cycle == null ? '-' : removableStat(merged.cycle, 1, 3, 1),
+      cycle: cycleValue(merged.cycle),
       rarity: merged.rarity === 'Legendary' ? 'Unique' : (['Common','Uncommon','Rare','Unique','None'].includes(merged.rarity) ? merged.rarity : 'Common'),
       template: ['unit-standard','unit-tall-text','unit-extended-art','horizontal','split-combine','flip','double-faced','composite-left','composite-right','custom'].includes(merged.template) ? merged.template : 'unit-standard',
       cardKind: ['Unit','Command','Mission','Resource'].includes(merged.cardKind) ? merged.cardKind : 'Unit',
@@ -583,8 +590,7 @@
     c.restore();
   }
   function drawAssetIcon(c, asset, centerX, centerY) {
-    const colors = { L: '#0b5fae', P: '#9c4dcc', S: '#8a6500', T: '#8b1e2d', U: '#117d45' };
-    const color = colors[asset] || '#4a4a4a';
+    const color = ASSET_COLORS[asset] || '#4a4a4a';
     const width = 34, height = 21, radius = 10.5;
     const left = centerX - width / 2, top = centerY - height / 2;
     c.save();
@@ -603,8 +609,7 @@
     c.restore();
   }
   function drawAssetCostIcon(c, value, asset, centerX, centerY) {
-    const colors = { L: '#0b5fae', P: '#9c4dcc', S: '#8a6500', T: '#8b1e2d', U: '#117d45' };
-    const color = colors[asset] || '#4a4a4a';
+    const color = ASSET_COLORS[asset] || '#4a4a4a';
     const width = 34, height = 21, radius = 10.5;
     const left = centerX - width / 2, top = centerY - height / 2, split = left + width / 2;
     c.save();
@@ -899,12 +904,25 @@
       drawRichTitle(c, card.name, 347 + card.nameX, 101.5 + card.nameY, 350, 46 * card.titleSize / 100, card.uppercaseTitle);
       if (card.cycle !== '' && card.cycle !== '-') {
         drawCycleControl(c, 565.5, 89.5);
-        c.fillStyle = '#050505'; c.font = '900 27px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5);
+        const assetCycleColor = ASSET_COLORS[card.cycle];
+        if (assetCycleColor) {
+          c.save();
+          const cycleFill = c.createRadialGradient(561, 84, 2, 565.5, 89.5, 12);
+          cycleFill.addColorStop(0, '#fff7a8');
+          cycleFill.addColorStop(.28, assetCycleColor);
+          cycleFill.addColorStop(1, assetCycleColor);
+          c.fillStyle = cycleFill;
+          c.beginPath(); c.arc(565.5, 89.5, 11.5, 0, Math.PI * 2); c.fill();
+          c.restore();
+        }
+        c.fillStyle = assetCycleColor ? (card.cycle === 'S' ? '#050505' : '#fff') : '#050505';
+        c.font = `900 ${assetCycleColor ? 24 : 27}px "Arial Black", Arial`;
+        fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5);
       }
     };
     drawHeaderIdentity();
 
-    const assets = [['L','#0b5fae'],['P','#9c4dcc'],['S','#8a6500'],['T','#8b1e2d'],['U','#117d45']].filter(([key]) => card[`asset${key}`] !== '');
+    const assets = Object.entries(ASSET_COLORS).filter(([key]) => card[`asset${key}`] !== '');
     // The Asset rail and header boxes share one edge so the white header reads
     // as a single continuous card component.
     const assetRailLeft = 60;
@@ -978,33 +996,6 @@
       c.lineWidth = 1;
       c.beginPath(); c.moveTo(mx(assetRailRight), assetRailTop); c.lineTo(mx(assetRailRight), assetLastPillBottom); c.stroke();
       c.beginPath(); c.moveTo(assetRailPaperLeft, my(assetRailEdgeTopSource)); c.lineTo(assetRailPaperLeft, assetRailBottom); c.stroke();
-      // Continue the left card frame beneath the end cap as a shallow support
-      // shelf, matching the framed ledge beneath the metadata boxes.
-      const supportLeft = 44;
-      const supportRight = mx(assetRailRight) - 8;
-      const supportTop = assetRailBottom;
-      const supportHeight = 7;
-      const supportFill = c.createLinearGradient(0, supportTop, 0, supportTop + supportHeight);
-      supportFill.addColorStop(0, '#0b4f6d');
-      supportFill.addColorStop(.48, '#031824');
-      supportFill.addColorStop(1, '#01070b');
-      c.fillStyle = supportFill;
-      c.strokeStyle = '#020508';
-      c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(supportLeft, supportTop);
-      c.lineTo(supportRight, supportTop);
-      c.lineTo(supportRight - 7, supportTop + supportHeight);
-      c.lineTo(supportLeft + 8, supportTop + supportHeight);
-      c.lineTo(supportLeft, supportTop + 3);
-      c.closePath();
-      c.fill(); c.stroke();
-      c.strokeStyle = '#a58d6c';
-      c.lineWidth = 1;
-      c.beginPath(); c.moveTo(supportLeft + 11, supportTop + 2.5); c.lineTo(supportRight - 7, supportTop + 2.5); c.stroke();
-      c.strokeStyle = '#050505';
-      c.lineWidth = 2;
-      c.beginPath(); c.moveTo(mx(assetRailRight), assetLastPillBottom); c.lineTo(mx(assetRailRight) - 8, assetRailBottom); c.lineTo(assetRailPaperLeft, assetRailBottom); c.stroke();
       // The unified paper pass covers these foreground elements, so restore
       // them after the surface is complete.
       drawHeaderIdentity();
@@ -1062,6 +1053,41 @@
       c.lineWidth = 1;
       c.beginPath(); c.moveTo(assetRailPaperLeft, maskY); c.lineTo(assetRailPaperLeft, maskY + maskHeight); c.stroke();
       c.beginPath(); c.moveTo(railRight, maskY); c.lineTo(railRight, maskY + maskHeight); c.stroke();
+    }
+
+    if (assets.length) {
+      // Draw the beveled end cap after the metadata-shelf repair. With a
+      // one-pill rail that repair overlaps the end-cap area; drawing this last
+      // keeps the same rounded/beveled silhouette used by taller Asset stacks.
+      const supportLeft = 44;
+      const supportRight = mx(assetRailRight) - 8;
+      const supportTop = assetRailBottom;
+      const supportHeight = 7;
+      const supportFill = c.createLinearGradient(0, supportTop, 0, supportTop + supportHeight);
+      supportFill.addColorStop(0, '#0b4f6d');
+      supportFill.addColorStop(.48, '#031824');
+      supportFill.addColorStop(1, '#01070b');
+      c.fillStyle = supportFill;
+      c.strokeStyle = '#020508';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(supportLeft, supportTop);
+      c.lineTo(supportRight, supportTop);
+      c.lineTo(supportRight - 7, supportTop + supportHeight);
+      c.lineTo(supportLeft + 8, supportTop + supportHeight);
+      c.lineTo(supportLeft, supportTop + 3);
+      c.closePath();
+      c.fill(); c.stroke();
+      c.strokeStyle = '#a58d6c';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(supportLeft + 11, supportTop + 2.5); c.lineTo(supportRight - 7, supportTop + 2.5); c.stroke();
+      c.strokeStyle = '#050505';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(mx(assetRailRight), assetLastPillBottom);
+      c.lineTo(mx(assetRailRight) - 8, assetRailBottom);
+      c.lineTo(assetRailPaperLeft, assetRailBottom);
+      c.stroke();
     }
 
     const firstRowCenter = mx((firstRowLeft + 990) / 2);
