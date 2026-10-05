@@ -1061,7 +1061,10 @@
     const assetStackHeight = assets.length * 29 + Math.max(0, assets.length - 1) * assetGap;
     const assetStartY = assetRailTop + 5;
     const assetLastPillBottom = assetStartY + assetStackHeight;
-    const assetRailBottom = assetLastPillBottom + 10;
+    const singleAssetRail = assets.length === 1;
+    const assetCapDepth = singleAssetRail ? 13 : 10;
+    const assetCapBevel = singleAssetRail ? 12 : 8;
+    const assetRailBottom = assetLastPillBottom + assetCapDepth;
     // Keep the Asset rail flush with the name panel instead of widening it
     // into the card frame. The existing pill bounds are centered between this
     // edge and assetRailRight.
@@ -1109,8 +1112,12 @@
       c.lineTo(headerPanelLeft, headerPanelBottom);
       c.lineTo(headerPanelLeft, headerPanelTop + headerCornerBevel);
       c.closePath();
-      c.moveTo(assetRailPaperLeft, my(assetRailTopSource)); c.lineTo(mx(assetRailRight), my(assetRailTopSource)); c.lineTo(mx(assetRailRight), assetLastPillBottom);
-      c.lineTo(mx(assetRailRight) - 8, assetRailBottom); c.lineTo(assetRailPaperLeft, assetRailBottom); c.closePath();
+      c.moveTo(assetRailPaperLeft, my(assetRailTopSource)); c.lineTo(mx(assetRailRight), my(assetRailTopSource)); c.lineTo(mx(assetRailRight), assetLastPillBottom - (singleAssetRail ? 2 : 0));
+      if (singleAssetRail) c.quadraticCurveTo(mx(assetRailRight), assetLastPillBottom + 6, mx(assetRailRight) - assetCapBevel, assetRailBottom);
+      else c.lineTo(mx(assetRailRight) - assetCapBevel, assetRailBottom);
+      c.lineTo(assetRailPaperLeft + (singleAssetRail ? 6 : 0), assetRailBottom);
+      if (singleAssetRail) c.quadraticCurveTo(assetRailPaperLeft, assetRailBottom, assetRailPaperLeft, assetRailBottom - 6);
+      c.closePath();
       c.save(); c.clip();
       // Limit the source to clean text-box paper. A five-pill rail is taller
       // than that clean source band; sampling an equally tall region reaches
@@ -1211,9 +1218,11 @@
       c.strokeStyle = '#050505';
       c.lineWidth = 2;
       c.beginPath();
-      c.moveTo(mx(assetRailRight), assetLastPillBottom);
-      c.lineTo(mx(assetRailRight) - 8, assetRailBottom);
-      c.lineTo(assetRailPaperLeft, assetRailBottom);
+      c.moveTo(mx(assetRailRight), assetLastPillBottom - (singleAssetRail ? 2 : 0));
+      if (singleAssetRail) c.quadraticCurveTo(mx(assetRailRight), assetLastPillBottom + 6, mx(assetRailRight) - assetCapBevel, assetRailBottom);
+      else c.lineTo(mx(assetRailRight) - assetCapBevel, assetRailBottom);
+      c.lineTo(assetRailPaperLeft + (singleAssetRail ? 6 : 0), assetRailBottom);
+      if (singleAssetRail) c.quadraticCurveTo(assetRailPaperLeft, assetRailBottom, assetRailPaperLeft, assetRailBottom - 6);
       c.stroke();
     }
 
