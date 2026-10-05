@@ -6,10 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261005-1">
+  <link rel="stylesheet" href="styles.css?v=20261005-2">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261005-1"></script>
-  <script defer src="studio.js?v=20261005-1"></script>
+  <script defer src="app.js?v=20261005-2"></script>
+  <script defer src="studio.js?v=20261005-2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -187,6 +187,7 @@
         <section class="tab-page" data-page="style">
           <div class="field"><label for="theme">Frame finish</label><select id="theme" name="theme"><option value="titanium">Titanium blue</option><option value="ember">Ember red</option><option value="royal">Royal violet</option><option value="verdant">Verdant green</option></select></div>
           <div class="field"><label for="titleSize">Title size <output id="titleSizeOut">100%</output></label><input id="titleSize" name="titleSize" type="range" min="75" max="115" value="100"></div>
+          <div class="field"><label for="paragraphSpacing">Paragraph spacing <output id="paragraphSpacingOut">8px</output></label><input id="paragraphSpacing" name="paragraphSpacing" type="range" min="0" max="24" step="1" value="8"></div>
           <fieldset class="position-fieldset">
             <legend>Text positioning</legend>
             <div class="grid-2 position-grid">
@@ -233,17 +234,19 @@
         <div class="project-actions"><button id="shareProjectBtn" type="button">Share link</button><button id="importLinkBtn" type="button">Import link</button><button id="projectHistoryBtn" type="button">History</button><button id="printPlayBtn" type="button">Print &amp; play</button></div>
       </section>
       <div class="panel-heading compact library-title"><div><span class="eyebrow">ACTIVE PROJECT</span><h2>Cards</h2></div><button id="newCardBtn" class="square" title="New card">＋</button></div>
-      <div class="library-tools">
-        <label class="select-all-row"><input id="selectAllCards" type="checkbox"><span>Select all cards in this project</span></label>
-        <input id="searchCards" type="search" placeholder="Search cards" aria-label="Search cards">
-        <select id="filterFaction" aria-label="Filter by faction"><option value="">All factions</option></select>
+      <div class="library-sticky-bar" aria-label="Card library navigation">
+        <div class="library-tools">
+          <label class="select-all-row"><input id="selectAllCards" type="checkbox"><span>Select all cards in this project</span></label>
+          <input id="searchCards" type="search" placeholder="Search cards" aria-label="Search cards">
+          <select id="filterFaction" aria-label="Filter by faction"><option value="">All factions</option></select>
+        </div>
+        <div class="library-footer">
+          <span id="selectionCount">0 selected</span>
+          <button id="duplicateBtn">Duplicate</button>
+          <button id="deleteBtn" class="danger">Delete</button>
+        </div>
       </div>
       <div id="cardList" class="card-list" aria-live="polite"></div>
-      <div class="library-footer">
-        <span id="selectionCount">0 selected</span>
-        <button id="duplicateBtn">Duplicate</button>
-        <button id="deleteBtn" class="danger">Delete</button>
-      </div>
       <div class="bulk-box">
         <h3>Bulk import</h3>
         <p>Import CSV, TSV, XLSX, or JSON. Column names are matched automatically.</p>

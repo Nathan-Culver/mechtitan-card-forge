@@ -3,7 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 7;
+  const DATA_VERSION = 8;
   const ASSET_COLORS = { L: '#0b5fae', P: '#9c4dcc', S: '#EDD012', T: '#8b1e2d', U: '#117d45' };
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
@@ -43,7 +43,7 @@
     attack: '-', armor: '-', structure: '-', cycle: '-', rarity: 'None', faction: '', artist: '', copyright: '', setCode: '', collector: '',
     staticKeywordBP: 0, staticAbilityBP: 0, operationalKeywordBP: 0, operationalAbilityBP: 0,
     battlefieldProjection: 1, expectedOperations: 3,
-    theme: 'titanium', titleSize: 100, nameX: 0, nameY: 0, rulesX: 0, rulesY: 0, flavorX: 0, flavorY: 0,
+    theme: 'titanium', titleSize: 100, paragraphSpacing: 8, nameX: 0, nameY: 0, rulesX: 0, rulesY: 0, flavorX: 0, flavorY: 0,
     uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
@@ -108,6 +108,7 @@
       secondaryAttack: removableStat(merged.secondaryAttack, 0, 20, 0), secondaryArmor: removableStat(merged.secondaryArmor, 0, 5, 0), secondaryStructure: removableStat(merged.secondaryStructure, 1, 30, 1),
       secondaryArtScale: clamp(merged.secondaryArtScale, 100, 220, 100), secondaryArtX: clamp(merged.secondaryArtX, -100, 100, 0), secondaryArtY: clamp(merged.secondaryArtY, -100, 100, 0),
       theme: themeMap[merged.theme] ? merged.theme : 'titanium', titleSize: clamp(merged.titleSize, 75, 115, 100),
+      paragraphSpacing: clamp(merged.paragraphSpacing, 0, 24, 8),
       nameX: clamp(merged.nameX, -100, 100, 0), nameY: clamp(merged.nameY, -50, 50, 0),
       rulesX: clamp(merged.rulesX, -100, 100, 0), rulesY: clamp(merged.rulesY, -100, 100, 0),
       flavorX: clamp(merged.flavorX, -100, 100, 0), flavorY: clamp(merged.flavorY, -100, 100, 0),
@@ -152,6 +153,7 @@
       migrated.cardKind = migrated.cardKind || 'Unit';
       migrated.rulesAlign = migrated.rulesAlign || 'left';
     }
+    if (fromVersion < 8) migrated.paragraphSpacing = Number(migrated.paragraphSpacing ?? 8);
     return migrated;
   }
 
@@ -267,10 +269,10 @@
   }
 
   function updateOutputs() {
-    ['artScale','artX','artY','secondaryArtScale','secondaryArtX','secondaryArtY','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
+    ['artScale','artX','artY','secondaryArtScale','secondaryArtX','secondaryArtY','titleSize','paragraphSpacing','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
       const input = document.querySelector(`#${id}`);
       const out = document.querySelector(`#${id}Out`);
-      if (out) out.textContent = (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
+      if (out) out.textContent = id === 'paragraphSpacing' ? `${input.value}px` : (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
     });
     const zoom = document.querySelector('#zoom');
     document.querySelector('#zoomOut').textContent = `${zoom.value}%`;
@@ -733,8 +735,11 @@
     documentRoot.querySelectorAll('script,style,iframe,object,embed,img,svg,canvas,video,audio,input,button,form,link,meta').forEach(node => node.remove());
     const segments = [];
     const blockTags = new Set(['ADDRESS','ARTICLE','ASIDE','BLOCKQUOTE','DIV','FIGCAPTION','FOOTER','HEADER','LI','MAIN','NAV','P','SECTION']);
-    const pushNewline = () => {
-      if (!segments.length || !String(segments[segments.length - 1].text || '').endsWith('\n')) segments.push({ ...base, text: '\n' });
+    const pushNewline = (paragraph = false) => {
+      if (!segments.length) return;
+      const desired = paragraph ? 2 : 1;
+      const trailing = String(segments[segments.length - 1].text || '').match(/\n+$/)?.[0].length || 0;
+      if (trailing < desired) segments.push({ ...base, text: '\n'.repeat(desired - trailing) });
     };
     const walk = (node, inherited) => {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -768,10 +773,10 @@
       }
       if (style.fontFamily && /^[\w\s,"'-]+$/.test(style.fontFamily)) next.fontFamily = style.fontFamily;
       if (style.letterSpacing && style.letterSpacing !== 'normal') next.letterSpacing = Math.max(-2, Math.min(12, cssLength(style.letterSpacing, 0)));
-      if (blockTags.has(tag) && segments.length) pushNewline();
+      if (blockTags.has(tag) && segments.length) pushNewline(true);
       if (tag === 'LI') segments.push({ ...next, text: '• ' });
       node.childNodes.forEach(child => walk(child, next));
-      if (blockTags.has(tag)) pushNewline();
+      if (blockTags.has(tag)) pushNewline(true);
     };
     documentRoot.body.childNodes.forEach(node => walk(node, base));
     while (segments.length && /^\n+$/.test(segments[segments.length - 1].text || '')) segments.pop();
@@ -786,8 +791,8 @@
     return parsed.body.textContent.replace(/\s+/g, ' ').trim();
   }
 
-  function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines, draw = true) {
-    let cursorX = x, cursorY = y, lines = 1;
+  function drawStyledSegments(c, segments, x, y, maxWidth, lineHeight, maxLines, draw = true, paragraphSpacing = 0) {
+    let cursorX = x, cursorY = y, lines = 1, previousWasNewline = false;
     const defaultFill = c.fillStyle;
     for (const segment of segments) {
       // Rules text supports compact inline game symbols: {t} for Tap,
@@ -797,9 +802,14 @@
       const words = String(segment.text || '').split(/(\{[1-5]\s*,\s*[LPSTU]\}|\{(?:t|[LPSTU]|[0-9]|1[0-9]|20)\}|:|\n|[ \t\r]+)/).filter(Boolean);
       for (const word of words) {
         if (word === '\n') {
+          if (previousWasNewline) {
+            cursorY += paragraphSpacing;
+            continue;
+          }
           lines += 1;
           if (lines > maxLines) return { cursorY, lines: maxLines };
           cursorX = x; cursorY += lineHeight;
+          previousWasNewline = true;
           continue;
         }
         const tapToken = word === '{t}';
@@ -814,10 +824,11 @@
         const width = resourceToken ? 26.5 : tapToken ? 23 : (assetToken || assetCostToken) ? 36 : c.measureText(word).width;
         if (!/^\s+$/.test(word) && cursorX + width > x + maxWidth && cursorX > x) {
           lines += 1;
-          if (lines > maxLines) return cursorY;
+          if (lines > maxLines) return { cursorY, lines: maxLines };
           cursorX = x; cursorY += lineHeight;
         }
         if (cursorX === x && /^\s+$/.test(word)) continue;
+        if (!/^\s+$/.test(word)) previousWasNewline = false;
         if (draw) {
           if (tapToken) drawTapIcon(c, cursorX + 10.5, cursorY - 7.5);
           else if (assetToken) drawAssetIcon(c, word[1], cursorX + 17, cursorY - 7.5);
@@ -1331,12 +1342,12 @@
     // not silently change the user's typography.
     const ruleSegments = parseRichTextSegments(card.rules, { weight: 400, size: 20.5, color: '#080808' });
     const tallRules = card.template === 'unit-tall-text';
-    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, (tallRules ? 497 : 653) + card.rulesY, 486, 24, tallRules ? 9 : 4);
+    drawStyledSegments(c, ruleSegments, 85 + card.rulesX, (tallRules ? 497 : 653) + card.rulesY, 486, 24, tallRules ? 9 : 4, true, card.paragraphSpacing);
     if (card.flavor) {
       const flavorSegments = parseRichTextSegments(card.flavor, { style: 'italic', weight: 400, size: 21, color: '#080808' });
-      const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false);
+      const flavorLayout = drawStyledSegments(c, flavorSegments, 85, 0, 466, 23, 3, false, card.paragraphSpacing);
       const flavorY = (tallRules ? 718 : 764) - Math.max(0, flavorLayout.lines - 1) * 23 + card.flavorY;
-      drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, tallRules ? 4 : 3);
+      drawStyledSegments(c, flavorSegments, 85 + card.flavorX, flavorY, 466, 23, tallRules ? 4 : 3, true, card.paragraphSpacing);
     }
 
     const hasSpeed = card.speed !== '-', hasAttack = card.attack !== '-';

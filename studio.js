@@ -101,12 +101,18 @@
     royal: ['#13091c', '#462762', '#ab7ee7'], verdant: ['#06160e', '#1d5534', '#55c783']
   };
   function plain(value) { return String(value || '').replace(/<[^>]*>/g, '').replace(/\*\*|__/g, '').replace(/\*|_/g, '').replace(/\{\s*(?:[0-5]\s*,\s*)?[LPSTUtlpstu]\s*\}/g, '◆').replace(/\{\d+\}/g, '◉'); }
-  function wrap(ctx, text, x, y, width, lineHeight, maxLines = 10, align = 'left') {
-    const words = plain(text).split(/\s+/).filter(Boolean); const lines = []; let line = '';
-    words.forEach(word => { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > width && line) { lines.push(line); line = word; } else line = test; });
-    if (line) lines.push(line);
+  function wrap(ctx, text, x, y, width, lineHeight, maxLines = 10, align = 'left', paragraphSpacing = 0) {
+    const source = String(text || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(?:p|div|li|blockquote|section)>/gi, '\n\n');
+    const paragraphs = plain(source).split(/\n\s*\n/); const lines = [];
+    paragraphs.forEach((paragraph, paragraphIndex) => {
+      const words = paragraph.split(/\s+/).filter(Boolean); let line = '', firstLine = true;
+      const pushLine = value => { lines.push({ text: value, paragraphStart: paragraphIndex > 0 && firstLine }); firstLine = false; };
+      words.forEach(word => { const test = line ? `${line} ${word}` : word; if (ctx.measureText(test).width > width && line) { pushLine(line); line = word; } else line = test; });
+      if (line) pushLine(line);
+    });
     ctx.textAlign = align; const drawX = align === 'center' ? x + width / 2 : align === 'right' ? x + width : x;
-    lines.slice(0, maxLines).forEach((value, index) => ctx.fillText(value, drawX, y + index * lineHeight));
+    let extraY = 0;
+    lines.slice(0, maxLines).forEach((value, index) => { if (value.paragraphStart) extraY += paragraphSpacing; ctx.fillText(value.text, drawX, y + index * lineHeight + extraY); });
   }
   function framePath(ctx, x, y, w, h, cut = 24) {
     ctx.beginPath(); ctx.moveTo(x + cut, y); ctx.lineTo(x + w - cut, y); ctx.lineTo(x + w, y + cut); ctx.lineTo(x + w, y + h - cut); ctx.lineTo(x + w - cut, y + h); ctx.lineTo(x + cut, y + h); ctx.lineTo(x, y + h - cut); ctx.lineTo(x, y + cut); ctx.closePath();
@@ -134,7 +140,7 @@
     const name = secondary ? card.secondaryName : card.name; ctx.fillText(plain(name) || 'UNTITLED', x + w / 2, y + 47, w - 90);
     ctx.fillStyle = '#080a0c'; ctx.textBaseline = 'alphabetic'; ctx.font = `${Math.max(15, w / 28)}px Arial`;
     const rules = secondary ? card.secondaryRules : card.rules; const flavor = secondary ? card.secondaryFlavor : card.flavor;
-    wrap(ctx, rules, x + 44, y + h - textHeight + 38, w - 88, Math.max(19, w / 24), 7, card.rulesAlign || 'left');
+    wrap(ctx, rules, x + 44, y + h - textHeight + 38, w - 88, Math.max(19, w / 24), 7, card.rulesAlign || 'left', Number(card.paragraphSpacing || 8));
     ctx.font = `italic ${Math.max(13, w / 32)}px Arial`; ctx.fillStyle = '#333'; wrap(ctx, flavor, x + 44, y + h - 70, w - 88, Math.max(16, w / 29), 2, card.rulesAlign || 'left');
     ctx.font = `700 ${Math.max(12, w / 34)}px Arial`; ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
     const traits = secondary ? card.secondaryTraits : card.traits; ctx.fillText(plain(traits || card.rarity), x + 42, y + 70, w - 84);
@@ -296,7 +302,7 @@
     });
 
     ctx.fillStyle = '#080808'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = '500 18px Arial';
-    wrap(ctx, splitValue(card, 'rules', secondary), rulesBox.x + 22, rulesBox.y + 36, rulesBox.w - 44, 22, 4, 'left');
+    wrap(ctx, splitValue(card, 'rules', secondary), rulesBox.x + 22, rulesBox.y + 36, rulesBox.w - 44, 22, 4, 'left', Number(card.paragraphSpacing || 8));
     ctx.font = 'italic 17px Arial'; wrap(ctx, splitValue(card, 'flavor', secondary), rulesBox.x + 22, rulesBox.y + 130, rulesBox.w - 44, 21, 3, 'left');
 
     const speed = splitValue(card, 'speed', secondary), attack = splitValue(card, 'attack', secondary), armor = splitValue(card, 'armor', secondary), structure = splitValue(card, 'structure', secondary);
@@ -375,7 +381,7 @@
       if (horizontalFrame.complete && horizontalFrame.naturalWidth) ctx.drawImage(horizontalFrame, 86, 77, 1305, 130, rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h);
       else { ctx.fillStyle = '#f2f1ed'; ctx.fillRect(rulesBox.x, rulesBox.y, rulesBox.w, rulesBox.h); }
       ctx.fillStyle = '#080808'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = '500 25px Arial';
-      wrap(ctx, value('rules'), 120, 325, 660, 31, 5, card.rulesAlign || 'left');
+      wrap(ctx, value('rules'), 120, 325, 660, 31, 5, card.rulesAlign || 'left', Number(card.paragraphSpacing || 8));
       ctx.font = 'italic 23px Arial'; wrap(ctx, value('flavor'), 120, 455, 660, 29, 3, card.rulesAlign || 'left');
       const stat = (x, statValue, fill, color) => {
         if (statValue === '-' || statValue === '') return;
@@ -542,7 +548,7 @@
     $('#dimensionsLabel').textContent = card.template === 'split-combine' ? '5.5 × 3.75 in split card' : horizontal || compositeBack ? '3.75 × 2.75 in with bleed' : '2.75 × 3.75 in with bleed';
   }
 
-  function presetData() { const card = forge.getFormData(); return Object.fromEntries(['theme','titleSize','nameX','nameY','rulesX','rulesY','flavorX','flavorY','uppercaseTitle','faction','copyright','rulesAlign','template','customLayers'].map(key => [key, card[key]])); }
+  function presetData() { const card = forge.getFormData(); return Object.fromEntries(['theme','titleSize','paragraphSpacing','nameX','nameY','rulesX','rulesY','flavorX','flavorY','uppercaseTitle','faction','copyright','rulesAlign','template','customLayers'].map(key => [key, card[key]])); }
   function renderPresets() { $('#presetSelect').innerHTML = '<option value="">Choose a preset</option>' + presets.map(item => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join(''); }
 
   async function pack(text) {
