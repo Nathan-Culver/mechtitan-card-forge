@@ -287,6 +287,7 @@
     const staticOutput = document.querySelector('#staticPowerValue');
     const operationalOutput = document.querySelector('#operationalPowerValue');
     const economicOutput = document.querySelector('#economicPowerValue');
+    const assetAccessibilityOutput = document.querySelector('#assetAccessibilityValue');
     const finalOutput = document.querySelector('#finalPowerValue');
     const suggestedOutput = document.querySelector('#suggestedConstructionValue');
     const lifetimeOutput = document.querySelector('#lifetimeCostValue');
@@ -304,6 +305,7 @@
       staticOutput.textContent = '—';
       operationalOutput.textContent = '—';
       economicOutput.textContent = '—';
+      assetAccessibilityOutput.textContent = '—';
       finalOutput.textContent = '—';
       suggestedOutput.textContent = '—';
       lifetimeOutput.textContent = '—';
@@ -316,7 +318,11 @@
     const operationalPower = Number(card.attack) + mobilityBySpeed[card.speed] + Number(card.operationalKeywordBP) + Number(card.operationalAbilityBP);
     const adjustedOperationalPower = operationalPower * operationMultiplier[card.operation];
     const economicPower = cyclePower[card.cycle] ?? 0;
-    const finalPower = staticPower + adjustedOperationalPower + economicPower;
+    const assetRequirements = ['L', 'P', 'S', 'T', 'U'].map(key => Number(card[`asset${key}`]) || 0).filter(Boolean);
+    const assetTotal = assetRequirements.reduce((sum, value) => sum + value, 0);
+    const assetDiversity = assetRequirements.length;
+    const assetAccessibility = -Math.min(1.5, (assetTotal * .15) + (Math.max(0, assetDiversity - 1) * .25));
+    const finalPower = staticPower + adjustedOperationalPower + economicPower + assetAccessibility;
     const suggestedConstruction = Math.max(0, Math.ceil((finalPower - 2) / 2));
     const actualConstruction = Number(card.construction);
     const delta = actualConstruction - suggestedConstruction;
@@ -325,6 +331,7 @@
     staticOutput.textContent = Number(staticPower.toFixed(2)).toString();
     operationalOutput.textContent = Number(adjustedOperationalPower.toFixed(2)).toString();
     economicOutput.textContent = Number(economicPower.toFixed(2)).toString();
+    assetAccessibilityOutput.textContent = assetAccessibility ? Number(assetAccessibility.toFixed(2)).toString() : '0';
     finalOutput.textContent = Number(finalPower.toFixed(1)).toString();
     suggestedOutput.textContent = suggestedConstruction;
     lifetimeOutput.textContent = lifetimeCost;
@@ -346,13 +353,13 @@
       verdict.textContent = 'Significantly below baseline';
     }
 
-    const warnings = [`Projection ${Number(card.battlefieldProjection).toFixed(Number(card.battlefieldProjection) % 1 ? 2 : 0)} is diagnostic only.`];
+    const warnings = [`Asset accessibility ${assetAccessibility ? Number(assetAccessibility.toFixed(2)) : 0} BP (${assetTotal} required across ${assetDiversity} type${assetDiversity === 1 ? '' : 's'}; capped at −1.5 BP).`, `Projection ${Number(card.battlefieldProjection).toFixed(Number(card.battlefieldProjection) % 1 ? 2 : 0)} is diagnostic only.`];
     const rules = String(card.rules || '');
     if (Number(card.battlefieldProjection) >= 2) warnings.push('High Battlefield Projection: playtest positioning carefully.');
     if (/\b(draw|cycle|resources?|cost reduction|reduce(?:s|d)? (?:the )?cost|discount)\b/i.test(rules)) warnings.push('Economy interaction detected: check draw, Cycle, and Resource loops.');
     if (Number(card.operation) <= 1 && Number(card.cycle) === 3 && delta <= 0) warnings.push('Efficiency warning: cheap Operation, high Cycle, and aggressive Construction coincide.');
-    diagnostics.classList.toggle('has-warning', warnings.length > 1);
-    diagnostics.textContent = `Operation modifies Operational Power only. ${warnings.join(' ')}`;
+    diagnostics.classList.toggle('has-warning', warnings.length > 2);
+    diagnostics.textContent = `Operation modifies Operational Power only. Asset requirements apply a conservative accessibility credit. ${warnings.join(' ')}`;
   }
 
   function loadArt(data) {
@@ -1644,7 +1651,14 @@
   document.querySelector('#bulkImportBtn').addEventListener('click', () => document.querySelector('#bulkFile').click());
   document.querySelector('#bulkFile').addEventListener('change', e => e.target.files[0] && bulkImport(e.target.files[0]));
   document.querySelector('#newCardBtn').addEventListener('click', () => { currentId = uid(); history = []; historyIndex = -1; setFormData({ ...defaults, id: currentId }); });
-  document.querySelector('#duplicateBtn').addEventListener('click', () => { const source = cards.find(c => c.id === currentId) || getFormData(); const copy = normalizeCard({ ...source, id: uid(), name: `${source.name} COPY` }); cards.unshift(copy); persist(); setFormData(copy); toast('Card duplicated'); });
+  document.querySelector('#duplicateBtn').addEventListener('click', () => {
+    const source = cards.find(c => c.id === currentId) || getFormData();
+    const copy = normalizeCard({ ...source, id: uid(), name: source.name });
+    const sourceIndex = cards.findIndex(card => card.id === source.id);
+    cards.splice(sourceIndex >= 0 ? sourceIndex + 1 : cards.length, 0, copy);
+    window.MechTitanStudio?.onCardDuplicated?.(source, copy);
+    persist(); setFormData(copy); toast('Card duplicated');
+  });
   document.querySelector('#deleteBtn').addEventListener('click', () => {
     const ids = selected.size ? [...selected] : [currentId]; cards = cards.filter(c => !ids.includes(c.id)); selected.clear();
     if (!cards.length) cards.push(normalizeCard({ ...defaults, id: uid() })); currentId = cards[0].id; persist(); setFormData(cards[0]); toast(`Deleted ${ids.length} card${ids.length === 1 ? '' : 's'}`);

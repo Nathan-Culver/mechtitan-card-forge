@@ -82,7 +82,8 @@ The editor uses the current three-part Unit model:
 - Static Power = `1.5 × Armor + 0.4 × Structure + static keywords + static abilities`
 - Operational Power = `Attack + Speed + operational keywords + operational abilities`; only this subtotal receives the Operation multiplier
 - Economic Power = `0 / 0.5 / 1 / 1.5` for Cycle None / 1 / 2 / 3
-- Total Power = Static Power + adjusted Operational Power + Economic Power
+- Asset accessibility = `−min(1.5, total Asset requirement × 0.15 + additional Asset types × 0.25)`
+- Total Power = Static Power + adjusted Operational Power + Economic Power + Asset accessibility
 - Suggested Construction = `ceil((Total Power - 2) / 2)`
 - Lifetime cost = actual Construction + Operation × expected uses
 

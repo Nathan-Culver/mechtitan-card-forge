@@ -416,7 +416,17 @@
     ctx.restore(); return true;
   }
 
-  window.MechTitanStudio = { decorateCard, filterCards, dimensions, drawVariant, saveActiveSet };
+  function onCardDuplicated(source, copy) {
+    const project = projects.find(item => item.id === (copy.projectId || source.projectId)) || activeProject();
+    const sourceIndex = project.cardIds.indexOf(source.id);
+    project.cardIds = project.cardIds.filter(id => id !== copy.id);
+    project.cardIds.splice(sourceIndex >= 0 ? sourceIndex + 1 : project.cardIds.length, 0, copy.id);
+    project.updatedAt = now();
+    persistProjects();
+    captureProjectRevision('Card duplicated');
+  }
+
+  window.MechTitanStudio = { decorateCard, filterCards, dimensions, drawVariant, saveActiveSet, onCardDuplicated };
 
   function balance(card) {
     const speed = { XS: -1, S: -.5, M: 0, F: .5, XF: 1 }[card.speed];
@@ -424,7 +434,10 @@
     if ([card.attack, card.armor, card.structure, card.construction, card.operation].some(value => value === '-' || value === '') || speed == null || operation == null) return { state: 'incomplete' };
     const staticPower = Number(card.armor) * 1.5 + Number(card.structure) * .4 + Number(card.staticKeywordBP || 0) + Number(card.staticAbilityBP || 0);
     const operational = (Number(card.attack) + speed + Number(card.operationalKeywordBP || 0) + Number(card.operationalAbilityBP || 0)) * operation;
-    const total = staticPower + operational + ({ 1: .5, 2: 1, 3: 1.5 }[card.cycle] || 0);
+    const assetRequirements = ['L', 'P', 'S', 'T', 'U'].map(key => Number(card[`asset${key}`]) || 0).filter(Boolean);
+    const assetTotal = assetRequirements.reduce((sum, value) => sum + value, 0);
+    const assetAccessibility = -Math.min(1.5, (assetTotal * .15) + (Math.max(0, assetRequirements.length - 1) * .25));
+    const total = staticPower + operational + ({ 1: .5, 2: 1, 3: 1.5 }[card.cycle] || 0) + assetAccessibility;
     const suggested = Math.max(0, Math.ceil((total - 2) / 2)); const delta = Number(card.construction) - suggested;
     return { state: Math.abs(delta) <= 1 ? 'balanced' : delta < -1 ? 'under' : 'over', total, suggested, delta };
   }
