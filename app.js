@@ -3,9 +3,9 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 9;
+  const DATA_VERSION = 10;
   const ASSET_COLORS = { L: '#0b5fae', P: '#9c4dcc', S: '#EDD012', T: '#8b1e2d', U: '#117d45' };
-  const FRAME_POSITION_FIELDS = new Set(['nameX','nameY','rulesX','rulesY','flavorX','flavorY','constructionX','constructionY','operationX','operationY','cycleX','cycleY']);
+  const FRAME_POSITION_FIELDS = new Set(['titleSize','paragraphSpacing','nameX','nameY','rulesX','rulesY','flavorX','flavorY','constructionX','constructionY','operationX','operationY','cycleX','cycleY']);
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -199,8 +199,40 @@
     renderLibrary();
   }
 
+  function compactCardsForStorage(sourceCards) {
+    const artwork = {};
+    const artworkRefs = new Map();
+    const storedCards = sourceCards.map(card => {
+      const storedCard = { ...card };
+      [['artData','artDataRef'], ['secondaryArtData','secondaryArtDataRef']].forEach(([field, refField]) => {
+        const data = String(card[field] || '');
+        delete storedCard[refField];
+        if (!data) return;
+        let ref = artworkRefs.get(data);
+        if (!ref) {
+          ref = `art-${artworkRefs.size + 1}`;
+          artworkRefs.set(data, ref);
+          artwork[ref] = data;
+        }
+        storedCard[field] = '';
+        storedCard[refField] = ref;
+      });
+      return storedCard;
+    });
+    return { storedCards, artwork };
+  }
+
   function persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, cards, currentId }));
+    try {
+      const { storedCards, artwork } = compactCardsForStorage(cards);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, cards: storedCards, artwork, currentId }));
+      return true;
+    } catch (error) {
+      console.error('Unable to save the card library', error);
+      saveStatus.textContent = 'Browser storage full — working copy only';
+      toast('Browser storage is full. The editor remains usable, but this change is not saved yet.');
+      return false;
+    }
   }
 
   function saveCurrent(showToast = true) {
@@ -209,10 +241,10 @@
     const index = cards.findIndex(c => c.id === card.id);
     if (index >= 0) cards[index] = card; else cards.unshift(card);
     currentId = card.id;
-    persist();
+    const persisted = persist();
     renderLibrary();
-    saveStatus.textContent = 'Saved locally';
-    if (showToast) toast('Card saved to this browser');
+    saveStatus.textContent = persisted ? 'Saved locally' : 'Browser storage full — working copy only';
+    if (showToast && persisted) toast('Card saved to this browser');
     return card;
   }
 
@@ -259,7 +291,13 @@
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if (stored?.cards?.length) {
         const storedVersion = Number(stored.version || 1);
-        const incoming = storedVersion < DATA_VERSION ? stored.cards.map(card => migrateCardData(card, storedVersion)) : stored.cards;
+        const artwork = stored.artwork && typeof stored.artwork === 'object' ? stored.artwork : {};
+        const hydratedCards = stored.cards.map(card => ({
+          ...card,
+          artData: card.artData || artwork[card.artDataRef] || '',
+          secondaryArtData: card.secondaryArtData || artwork[card.secondaryArtDataRef] || ''
+        }));
+        const incoming = storedVersion < DATA_VERSION ? hydratedCards.map(card => migrateCardData(card, storedVersion)) : hydratedCards;
         cards = incoming.map(normalizeCard);
         currentId = cards.some(c => c.id === stored.currentId) ? stored.currentId : cards[0].id;
         if (storedVersion < DATA_VERSION) persist();

@@ -82,7 +82,44 @@
     return ordered;
   }
   function persistProjects() { localStorage.setItem(PROJECT_KEY, JSON.stringify({ projects, activeProjectId })); }
-  function persistRevisions() { localStorage.setItem(REVISION_KEY, JSON.stringify(revisions)); }
+  function revisionCard(card = {}) {
+    return { ...card, artData: '', secondaryArtData: '', _revisionArtworkOmitted: true };
+  }
+  function sanitizeRevisionSnapshot(snapshot) {
+    try {
+      const data = JSON.parse(snapshot);
+      if (data?.project && Array.isArray(data.cards)) return JSON.stringify({ ...data, cards: data.cards.map(revisionCard) });
+      if (data && typeof data === 'object') return JSON.stringify(revisionCard(data));
+    } catch (_) {}
+    return snapshot;
+  }
+  function sanitizeRevisions() {
+    ['cards', 'projects'].forEach(group => {
+      Object.values(revisions[group] || {}).forEach(list => {
+        if (!Array.isArray(list)) return;
+        list.forEach(item => { if (item?.snapshot) item.snapshot = sanitizeRevisionSnapshot(item.snapshot); });
+      });
+    });
+  }
+  function persistRevisions(silent = false) {
+    const lists = () => ['cards', 'projects'].flatMap(group => Object.values(revisions[group] || {}).filter(Array.isArray));
+    while (true) {
+      try {
+        localStorage.setItem(REVISION_KEY, JSON.stringify(revisions));
+        return true;
+      } catch (error) {
+        const candidates = lists().filter(list => list.length > 1);
+        if (!candidates.length) {
+          console.warn('Unable to save version history', error);
+          if (!silent) forge.toast('Version history storage is full. Your card changes are still available.');
+          return false;
+        }
+        candidates.sort((a, b) => new Date(a[a.length - 1]?.at || 0) - new Date(b[b.length - 1]?.at || 0))[0].pop();
+      }
+    }
+  }
+  sanitizeRevisions();
+  persistRevisions(true);
   function decorateCard(card) {
     const project = activeProject();
     if (!card.projectId) card.projectId = project.id;
@@ -483,13 +520,13 @@
 
   function captureCardRevision(reason = 'Card saved') {
     const card = forge.getCards().find(item => item.id === forge.getCurrentId()); if (!card) return;
-    const list = revisions.cards[card.id] ||= []; const snapshot = JSON.stringify(card);
+    const list = revisions.cards[card.id] ||= []; const snapshot = JSON.stringify(revisionCard(card));
     if (list[0]?.snapshot === snapshot) return;
     list.unshift({ id: crypto.randomUUID?.() || String(Date.now()), at: now(), reason, snapshot }); revisions.cards[card.id] = list.slice(0, 30); persistRevisions();
   }
   function captureProjectRevision(reason = 'Project saved') {
     const project = activeProject(); const list = revisions.projects[project.id] ||= [];
-    const snapshot = JSON.stringify({ project, cards: activeCards() }); if (list[0]?.snapshot === snapshot) return;
+    const snapshot = JSON.stringify({ project, cards: activeCards().map(revisionCard) }); if (list[0]?.snapshot === snapshot) return;
     list.unshift({ id: crypto.randomUUID?.() || String(Date.now()), at: now(), reason, snapshot }); revisions.projects[project.id] = list.slice(0, 20); persistRevisions();
   }
 
@@ -524,8 +561,18 @@
   function revisionBy(type, id) { const key = type === 'card' ? forge.getCurrentId() : activeProjectId; return (revisions[`${type}s`][key] || []).find(item => item.id === id); }
   function restoreRevision(type, item) {
     if (!item || !confirm(`Restore this ${type} revision? The current version will be retained in history.`)) return;
-    if (type === 'card') { captureCardRevision('Before restore'); const restored = JSON.parse(item.snapshot); const cards = forge.getCards().map(card => card.id === restored.id ? restored : card); forge.setCards(cards); forge.setFormData(restored); captureCardRevision('Restored revision'); }
-    else { captureProjectRevision('Before restore'); const data = JSON.parse(item.snapshot); projects = projects.map(project => project.id === data.project.id ? normalizeProject(data.project) : project); const other = forge.getCards().filter(card => card.projectId !== data.project.id); forge.setCards([...other, ...data.cards]); persistProjects(); renderProjects(); captureProjectRevision('Restored revision'); }
+    if (type === 'card') {
+      captureCardRevision('Before restore');
+      const restored = JSON.parse(item.snapshot); const current = forge.getCards().find(card => card.id === restored.id);
+      if (restored._revisionArtworkOmitted) { restored.artData = current?.artData || ''; restored.secondaryArtData = current?.secondaryArtData || ''; delete restored._revisionArtworkOmitted; }
+      const cards = forge.getCards().map(card => card.id === restored.id ? restored : card); forge.setCards(cards); forge.setFormData(restored); captureCardRevision('Restored revision');
+    }
+    else {
+      captureProjectRevision('Before restore');
+      const data = JSON.parse(item.snapshot); const currentCards = new Map(forge.getCards().map(card => [card.id, card]));
+      data.cards = data.cards.map(card => { if (!card._revisionArtworkOmitted) return card; const current = currentCards.get(card.id); const restored = { ...card, artData: current?.artData || '', secondaryArtData: current?.secondaryArtData || '' }; delete restored._revisionArtworkOmitted; return restored; });
+      projects = projects.map(project => project.id === data.project.id ? normalizeProject(data.project) : project); const other = forge.getCards().filter(card => card.projectId !== data.project.id); forge.setCards([...other, ...data.cards]); persistProjects(); renderProjects(); captureProjectRevision('Restored revision');
+    }
     $('#studioDialog').close(); forge.toast('Earlier version restored');
   }
 
