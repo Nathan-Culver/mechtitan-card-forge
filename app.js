@@ -3,7 +3,7 @@
 
   const W = 660, H = 900, PPI = 240;
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
-  const DATA_VERSION = 8;
+  const DATA_VERSION = 9;
   const ASSET_COLORS = { L: '#0b5fae', P: '#9c4dcc', S: '#EDD012', T: '#8b1e2d', U: '#117d45' };
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
@@ -14,6 +14,7 @@
   const cardList = document.querySelector('#cardList');
   const saveStatus = document.querySelector('#saveStatus');
   const selected = new Set();
+  let selectionAnchorId = null;
   let cards = [];
   let currentId = null;
   let artImage = null;
@@ -44,6 +45,7 @@
     staticKeywordBP: 0, staticAbilityBP: 0, operationalKeywordBP: 0, operationalAbilityBP: 0,
     battlefieldProjection: 1, expectedOperations: 3,
     theme: 'titanium', titleSize: 100, paragraphSpacing: 8, nameX: 0, nameY: 0, rulesX: 0, rulesY: 0, flavorX: 0, flavorY: 0,
+    constructionX: 0, constructionY: 0, operationX: 0, operationY: 0, cycleX: 0, cycleY: 0,
     uppercaseTitle: false, showTags: false, showTypes: true, artData: '', artScale: 100, artX: 0, artY: 0
   };
 
@@ -112,6 +114,9 @@
       nameX: clamp(merged.nameX, -100, 100, 0), nameY: clamp(merged.nameY, -50, 50, 0),
       rulesX: clamp(merged.rulesX, -100, 100, 0), rulesY: clamp(merged.rulesY, -100, 100, 0),
       flavorX: clamp(merged.flavorX, -100, 100, 0), flavorY: clamp(merged.flavorY, -100, 100, 0),
+      constructionX: clamp(merged.constructionX, -100, 100, 0), constructionY: clamp(merged.constructionY, -50, 50, 0),
+      operationX: clamp(merged.operationX, -100, 100, 0), operationY: clamp(merged.operationY, -50, 50, 0),
+      cycleX: clamp(merged.cycleX, -100, 100, 0), cycleY: clamp(merged.cycleY, -50, 50, 0),
       uppercaseTitle: merged.uppercaseTitle !== false && String(merged.uppercaseTitle).toLowerCase() !== 'false',
       showTags: merged.showTags !== false && String(merged.showTags).toLowerCase() !== 'false',
       showTypes: true,
@@ -154,6 +159,11 @@
       migrated.rulesAlign = migrated.rulesAlign || 'left';
     }
     if (fromVersion < 8) migrated.paragraphSpacing = Number(migrated.paragraphSpacing ?? 8);
+    if (fromVersion < 9) {
+      migrated.constructionX = Number(migrated.constructionX ?? 0); migrated.constructionY = Number(migrated.constructionY ?? 0);
+      migrated.operationX = Number(migrated.operationX ?? 0); migrated.operationY = Number(migrated.operationY ?? 0);
+      migrated.cycleX = Number(migrated.cycleX ?? 0); migrated.cycleY = Number(migrated.cycleY ?? 0);
+    }
     return migrated;
   }
 
@@ -209,6 +219,16 @@
     if (window.MechTitanStudio?.saveActiveSet) return window.MechTitanStudio.saveActiveSet();
     const card = saveCurrent(false);
     toast('Set saved to this browser');
+    return card;
+  }
+
+  function switchToCard(card) {
+    if (!card || card.id === currentId) return card;
+    saveCurrent(false);
+    history = [];
+    historyIndex = -1;
+    setFormData(card);
+    updateUndoButtons();
     return card;
   }
 
@@ -269,7 +289,7 @@
   }
 
   function updateOutputs() {
-    ['artScale','artX','artY','secondaryArtScale','secondaryArtX','secondaryArtY','titleSize','paragraphSpacing','nameX','nameY','rulesX','rulesY','flavorX','flavorY'].forEach(id => {
+    ['artScale','artX','artY','secondaryArtScale','secondaryArtX','secondaryArtY','titleSize','paragraphSpacing','nameX','nameY','rulesX','rulesY','flavorX','flavorY','constructionX','constructionY','operationX','operationY','cycleX','cycleY'].forEach(id => {
       const input = document.querySelector(`#${id}`);
       const out = document.querySelector(`#${id}Out`);
       if (out) out.textContent = id === 'paragraphSpacing' ? `${input.value}px` : (id.includes('Scale') || id === 'titleSize') ? `${input.value}%` : input.value;
@@ -931,10 +951,11 @@
         const side = surface.getContext('2d');
         // Preserve the real regular-card header and its lower rules/footer
         // frame, then compress those two regions into one playable flip half.
-        // End the identity header at the metadata rail; do not carry a thin
-        // strip of the artwork into the rules box. This keeps both halves in
-        // the clean header → type rail → text-panel order of the reference.
-        side.drawImage(face, 0, 0, W, 178, 0, 0, W, 145);
+        // End the identity header exactly at the metadata rail. Starting the
+        // rules crop at the same destination edge makes the upper ability box
+        // touch its black rail; rotation gives the lower half the matching
+        // ability-box-to-rail contact without carrying an artwork strip over.
+        side.drawImage(face, 0, 0, W, 153, 0, 0, W, 145);
         side.drawImage(face, 0, 600, W, 270, 0, 145, W, 160);
         return surface;
       };
@@ -1032,37 +1053,40 @@
 
     const drawHeaderIdentity = () => {
       c.textBaseline = 'middle'; c.textAlign = 'center';
+      const constructionX = Number(card.constructionX || 0), constructionY = Number(card.constructionY || 0);
+      const operationX = Number(card.operationX || 0), operationY = Number(card.operationY || 0);
+      const cycleCenterX = 565.5 + Number(card.cycleX || 0), cycleCenterY = 89.5 + Number(card.cycleY || 0);
       if (card.construction !== '-') {
-        if (layerImages.construction) c.drawImage(layerImages.construction, 72, 68, 44, 44);
-        else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94, 90, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
-        strokeEmbossedEllipse(c, 94, 90, 20, 20, 3.1);
-        c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 94, 92);
+        if (layerImages.construction) c.drawImage(layerImages.construction, 72 + constructionX, 68 + constructionY, 44, 44);
+        else { c.fillStyle = '#f8f8f6'; c.strokeStyle = '#050505'; c.lineWidth = 4; c.beginPath(); c.arc(94 + constructionX, 90 + constructionY, 20, 0, Math.PI * 2); c.fill(); c.stroke(); }
+        strokeEmbossedEllipse(c, 94 + constructionX, 90 + constructionY, 20, 20, 3.1);
+        c.fillStyle = '#050505'; c.font = '900 31px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.construction, 94 + constructionX, 92 + constructionY);
       }
       if (card.operation !== '-') {
-        if (layerImages.operation) c.drawImage(layerImages.operation, 121, 72, 37, 37);
-        else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5, 90.5, 18.5, 0, Math.PI * 2); c.fill(); }
-        strokeEmbossedEllipse(c, 139.5, 90.5, 18, 18, 2.7);
-        c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5, 90.5);
+        if (layerImages.operation) c.drawImage(layerImages.operation, 121 + operationX, 72 + operationY, 37, 37);
+        else { c.fillStyle = '#050505'; c.beginPath(); c.arc(139.5 + operationX, 90.5 + operationY, 18.5, 0, Math.PI * 2); c.fill(); }
+        strokeEmbossedEllipse(c, 139.5 + operationX, 90.5 + operationY, 18, 18, 2.7);
+        c.fillStyle = '#fff'; c.font = '900 28px "Arial Black", Arial'; fillTextOpticallyCentered(c, card.operation, 139.5 + operationX, 90.5 + operationY);
       }
 
       drawRichTitle(c, card.name, 347 + card.nameX, 101.5 + card.nameY, 350, 46 * card.titleSize / 100, card.uppercaseTitle);
       if (card.cycle !== '' && card.cycle !== '-') {
-        drawCycleControl(c, 565.5, 89.5);
+        drawCycleControl(c, cycleCenterX, cycleCenterY);
         const assetCycleColor = ASSET_COLORS[card.cycle];
         if (assetCycleColor) {
           c.save();
-          const cycleFill = c.createRadialGradient(561, 84, 2, 565.5, 89.5, 12);
+          const cycleFill = c.createRadialGradient(cycleCenterX - 4.5, cycleCenterY - 5.5, 2, cycleCenterX, cycleCenterY, 12);
           cycleFill.addColorStop(0, '#fff7a8');
           cycleFill.addColorStop(.28, assetCycleColor);
           cycleFill.addColorStop(1, assetCycleColor);
           c.fillStyle = cycleFill;
-          c.beginPath(); c.arc(565.5, 89.5, 11.5, 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.arc(cycleCenterX, cycleCenterY, 11.5, 0, Math.PI * 2); c.fill();
           c.restore();
         }
         c.fillStyle = assetCycleColor ? (card.cycle === 'S' ? '#050505' : '#fff') : '#050505';
         c.font = `900 ${assetCycleColor ? 24 : 27}px "Arial Black", Arial`;
         const cycleOpticalY = card.cycle === 'T' ? 3 : 0;
-        fillTextOpticallyCentered(c, card.cycle, 565.5, 89.5 + cycleOpticalY);
+        fillTextOpticallyCentered(c, card.cycle, cycleCenterX, cycleCenterY + cycleOpticalY);
       }
     };
     drawHeaderIdentity();
@@ -1480,7 +1504,7 @@
     const filter = document.querySelector('#filterFaction');
     const old = filter.value; filter.innerHTML = '<option value="">All factions</option>' + factions.map(x => `<option>${escXml(x)}</option>`).join(''); filter.value = old;
     const shown = libraryCards.filter(c => (!query || `${plainTextFromMarkup(c.name)} ${c.faction} ${c.traits}`.toLowerCase().includes(query)) && (!faction || c.faction === faction));
-    cardList.innerHTML = shown.length ? shown.map(c => { const displayName = plainTextFromMarkup(c.name); return `<article class="library-card ${c.id === currentId ? 'current' : ''}" data-id="${c.id}" tabindex="0" draggable="true"><input type="checkbox" aria-label="Select ${escXml(displayName)}" ${selected.has(c.id) ? 'checked' : ''}><div class="order-controls"><button type="button" data-move="-1" title="Move up" aria-label="Move ${escXml(displayName)} up">↑</button><button type="button" data-move="1" title="Move down" aria-label="Move ${escXml(displayName)} down">↓</button></div><div class="mini-card"></div><div class="library-meta"><strong>${escXml(displayName)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`; }).join('') : '<p class="hint">No cards match this view.</p>';
+    cardList.innerHTML = shown.length ? shown.map(c => { const displayName = plainTextFromMarkup(c.name); return `<article class="library-card ${c.id === currentId ? 'current' : ''} ${selected.has(c.id) ? 'selected' : ''}" data-id="${c.id}" tabindex="0" draggable="true"><input type="checkbox" aria-label="Select ${escXml(displayName)}" ${selected.has(c.id) ? 'checked' : ''}><div class="order-controls"><button type="button" data-move="-1" title="Move up" aria-label="Move ${escXml(displayName)} up">↑</button><button type="button" data-move="1" title="Move down" aria-label="Move ${escXml(displayName)} down">↓</button></div><div class="mini-card"></div><div class="library-meta"><strong>${escXml(displayName)}</strong><span>${escXml(c.faction || c.traits || 'Unassigned')}</span></div><span class="library-cost">${c.construction}</span></article>`; }).join('') : '<p class="hint">No cards match this view.</p>';
     document.querySelector('#selectionCount').textContent = `${selected.size} selected`;
     const selectAll = document.querySelector('#selectAllCards');
     const selectedHere = libraryCards.filter(card => selected.has(card.id)).length;
@@ -1661,17 +1685,31 @@
   document.querySelector('#projectFile').addEventListener('change', e => e.target.files[0] && importProjectFile(e.target.files[0]));
   document.querySelector('#bulkImportBtn').addEventListener('click', () => document.querySelector('#bulkFile').click());
   document.querySelector('#bulkFile').addEventListener('change', e => e.target.files[0] && bulkImport(e.target.files[0]));
-  document.querySelector('#newCardBtn').addEventListener('click', () => { currentId = uid(); history = []; historyIndex = -1; setFormData({ ...defaults, id: currentId }); });
+  document.querySelector('#newCardBtn').addEventListener('click', () => {
+    saveCurrent(false);
+    currentId = uid(); history = []; historyIndex = -1;
+    setFormData({ ...defaults, id: currentId });
+    updateUndoButtons();
+  });
   document.querySelector('#duplicateBtn').addEventListener('click', () => {
-    const source = cards.find(c => c.id === currentId) || getFormData();
-    const copy = normalizeCard({ ...source, id: uid(), name: source.name });
-    const sourceIndex = cards.findIndex(card => card.id === source.id);
-    cards.splice(sourceIndex >= 0 ? sourceIndex + 1 : cards.length, 0, copy);
-    window.MechTitanStudio?.onCardDuplicated?.(source, copy);
-    persist(); setFormData(copy); toast('Card duplicated');
+    saveCurrent(false);
+    const sourceIds = selected.size ? new Set(selected) : new Set([currentId]);
+    const sources = cards.filter(card => sourceIds.has(card.id));
+    if (!sources.length) return toast('Select at least one saved card');
+    const pairs = sources.map(source => ({ source, copy: normalizeCard({ ...source, id: uid(), name: source.name }) }));
+    pairs.forEach(({ source, copy }) => {
+      const sourceIndex = cards.findIndex(card => card.id === source.id);
+      cards.splice(sourceIndex >= 0 ? sourceIndex + 1 : cards.length, 0, copy);
+    });
+    if (window.MechTitanStudio?.onCardsDuplicated) window.MechTitanStudio.onCardsDuplicated(pairs);
+    else pairs.forEach(({ source, copy }) => window.MechTitanStudio?.onCardDuplicated?.(source, copy));
+    selected.clear(); pairs.forEach(({ copy }) => selected.add(copy.id)); selectionAnchorId = pairs[0].copy.id;
+    history = []; historyIndex = -1;
+    persist(); setFormData(pairs[0].copy); updateUndoButtons();
+    toast(`${pairs.length} card${pairs.length === 1 ? '' : 's'} duplicated`);
   });
   document.querySelector('#deleteBtn').addEventListener('click', () => {
-    const ids = selected.size ? [...selected] : [currentId]; cards = cards.filter(c => !ids.includes(c.id)); selected.clear();
+    const ids = selected.size ? [...selected] : [currentId]; cards = cards.filter(c => !ids.includes(c.id)); selected.clear(); selectionAnchorId = null;
     if (!cards.length) cards.push(normalizeCard({ ...defaults, id: uid() })); currentId = cards[0].id; persist(); setFormData(cards[0]); toast(`Deleted ${ids.length} card${ids.length === 1 ? '' : 's'}`);
   });
   document.querySelector('#undoBtn').addEventListener('click', () => travelHistory(-1));
@@ -1681,14 +1719,28 @@
   document.querySelector('#selectAllCards').addEventListener('change', event => {
     const libraryCards = window.MechTitanStudio?.filterCards?.(cards) || cards;
     libraryCards.forEach(card => event.target.checked ? selected.add(card.id) : selected.delete(card.id));
+    selectionAnchorId = null;
     renderLibrary();
   });
+  function selectCardRange(toId) {
+    const visibleIds = [...cardList.querySelectorAll('.library-card')].map(item => item.dataset.id);
+    const from = visibleIds.indexOf(selectionAnchorId), to = visibleIds.indexOf(toId);
+    if (from < 0 || to < 0) selected.add(toId);
+    else visibleIds.slice(Math.min(from, to), Math.max(from, to) + 1).forEach(id => selected.add(id));
+    selectionAnchorId = toId;
+  }
   cardList.addEventListener('click', event => {
     const item = event.target.closest('.library-card'); if (!item) return; const id = item.dataset.id;
-    if (event.target.matches('input[type=checkbox]')) { event.target.checked ? selected.add(id) : selected.delete(id); renderLibrary(); return; }
-    const card = cards.find(c => c.id === id); if (card) setFormData(card);
+    if (event.target.matches('input[type=checkbox]')) {
+      if (event.shiftKey && selectionAnchorId) selectCardRange(id);
+      else { event.target.checked ? selected.add(id) : selected.delete(id); selectionAnchorId = id; }
+      renderLibrary(); return;
+    }
+    if (event.shiftKey) { selectCardRange(id); renderLibrary(); return; }
+    selectionAnchorId = id;
+    const card = cards.find(c => c.id === id); if (card) switchToCard(card);
   });
-  cardList.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.library-card')) { event.preventDefault(); const card = cards.find(c => c.id === event.target.dataset.id); if (card) setFormData(card); } });
+  cardList.addEventListener('keydown', event => { if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.library-card')) { event.preventDefault(); const card = cards.find(c => c.id === event.target.dataset.id); if (card) switchToCard(card); } });
   document.querySelector('#exportGroupBtn').addEventListener('click', async () => {
     const ids = selected.size ? [...selected] : [currentId]; const group = cards.filter(c => ids.includes(c.id)); if (!group.length) return toast('Select at least one saved card');
     const format = document.querySelector('#exportFormat').value, dpi = Number(document.querySelector('#exportDpi').value);
@@ -1725,10 +1777,10 @@
   preloadLayers();
   const initial = loadStore(); setFormData(initial); updateUndoButtons(); registerWebMcp();
   window.MechTitanForge = {
-    version: DATA_VERSION, defaults: { ...defaults }, normalizeCard, getFormData, setFormData, saveCurrent, persist, render, renderLibrary,
+    version: DATA_VERSION, defaults: { ...defaults }, normalizeCard, getFormData, setFormData, switchToCard, saveCurrent, persist, render, renderLibrary,
     renderCardBlob, downloadBlob, toast, slug, plainTextFromMarkup,
     getCards: () => cards, setCards: next => { cards = next.map(normalizeCard); persist(); renderLibrary(); },
-    getCurrentId: () => currentId, setCurrentId: id => { const card = cards.find(item => item.id === id); if (card) setFormData(card); },
+    getCurrentId: () => currentId, setCurrentId: id => { const card = cards.find(item => item.id === id); if (card) switchToCard(card); },
     createId: uid, getArtImage: () => artImage, selected
   };
 })();

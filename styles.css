@@ -117,6 +117,7 @@ fieldset { border: 0; padding: 0; margin: 0 0 .95rem; }
 .card-list { min-height: 180px; display: grid; gap: .45rem; }
 .library-card { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr) auto; gap: .48rem; align-items: center; border: 1px solid var(--line); padding: .55rem; background: #0a1016; cursor: pointer; }
 .library-card:hover, .library-card.current { border-color: var(--cyan-2); background: #101c27; }
+.library-card.selected { border-color: #d7c39b; box-shadow: inset 0 0 0 1px #d7c39b66; }
 .library-card input { width: auto; }
 .mini-card { width: 35px; height: 49px; background: linear-gradient(145deg, #4b657b, #08131c 48%, #d7e2e9 49%, #182431 76%); border: 1px solid #66849b; }
 .library-meta { min-width: 0; }

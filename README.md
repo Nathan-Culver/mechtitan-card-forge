@@ -14,15 +14,16 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Live comprehensive Unit balance model with separate Static, Operational, and Economic Power; suggested Construction; cost variance; Battlefield Projection diagnostics; and configurable lifetime cost
 - Compact Power Rating summary with an on-demand BP breakdown
 - Safe rich-text rendering for card names, rules, and flavor text using standard inline HTML tags, inline CSS, and existing Markdown
-- Independent positioning controls for card names, rules text, and flavor text, plus adjustable paragraph spacing
+- Independent horizontal and vertical positioning controls for card names, rules text, flavor text, Construction, Operation, and Cycle, plus adjustable paragraph spacing
 - Artwork upload, crop positioning, frame themes, and typography controls
 - Multiple named card sets and decks with descriptions, cover cards, drag ordering, project-level statistics, and balance summaries
 - Self-contained public/unlisted and passphrase-encrypted private links for individual cards or complete projects, plus link import
 - Standard, tall-text, extended-art, horizontal, split/Combine, flip, double-faced, composite-half, and advanced custom-layer frames
 - Conditional Unit fields and shared data retention while switching compatible templates
 - Visual rules-text toolbar for Tap, Resources, Assets, bold, italic, color, size, and alignment; token and HTML entry remain supported
-- Local library with search, faction filtering, duplication, multi-select, reusable style presets, and card/project revision history with compare and restore
+- Local library with search, faction filtering, Shift-range selection, duplication, multi-select, reusable style presets, and card/project revision history with compare and restore
 - Sticky card-library search, filter, selection, duplicate, and delete controls while scrolling through a set
+- Automatic saving when opening another card, plus adjacent single-card and multi-card duplication
 - CSV, TSV, XLSX, XLS, and JSON bulk import
 - Individual or full-set JSON save/load
 - PNG, JPEG, and SVG export at 600 or 1,200 DPI; raster exports include physical-resolution metadata for print workflows
@@ -72,7 +73,7 @@ Inline Asset symbols use the same embossed capsule design as Asset Cost pills. L
 
 Use `mechtitan-card-template.csv` as the starting point. Supported columns include:
 
-`name`, `cardKind`, `template`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `rulesAlign`, `paragraphSpacing`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `staticKeywordBP`, `staticAbilityBP`, `operationalKeywordBP`, `operationalAbilityBP`, `battlefieldProjection`, `expectedOperations`, `rarity`, `faction`, `artist`, `setCode`, `collector`, `theme`, `nameX`, `nameY`, `rulesX`, `rulesY`, `flavorX`, `flavorY`, `secondaryName`, `secondaryTraits`, `secondaryRules`, `secondaryFlavor`, `combineEnabled`, and `compositePairId`.
+`name`, `cardKind`, `template`, `construction`, `operation`, `assetL`, `assetP`, `assetS`, `assetT`, `assetU`, `loadout`, `traits`, `rules`, `rulesAlign`, `paragraphSpacing`, `flavor`, `speed`, `attack`, `armor`, `structure`, `cycle`, `staticKeywordBP`, `staticAbilityBP`, `operationalKeywordBP`, `operationalAbilityBP`, `battlefieldProjection`, `expectedOperations`, `rarity`, `faction`, `artist`, `setCode`, `collector`, `theme`, `nameX`, `nameY`, `rulesX`, `rulesY`, `flavorX`, `flavorY`, `constructionX`, `constructionY`, `operationX`, `operationY`, `cycleX`, `cycleY`, `secondaryName`, `secondaryTraits`, `secondaryRules`, `secondaryFlavor`, `combineEnabled`, and `compositePairId`.
 
 Card names, rules, and flavor text accept standard inline HTML elements and inline CSS. Text-focused styles such as color, background color, font size, font family, font weight, font style, text decoration, and letter spacing are rendered on the card. Scripts, forms, and embedded media are ignored.
 
