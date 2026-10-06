@@ -23,7 +23,7 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Visual rules-text toolbar for Tap, Resources, Assets, bold, italic, color, size, and alignment; token and HTML entry remain supported
 - Local library with search, faction filtering, Shift-range selection, duplication, multi-select, reusable style presets, and card/project revision history with compare and restore
 - Sticky card-library search, filter, selection, duplicate, and delete controls while scrolling through a set
-- Automatic saving when opening another card, plus adjacent single-card and multi-card duplication
+- Automatic saving when opening another card, plus adjacent single-card and multi-card duplication with clean post-duplicate navigation
 - CSV, TSV, XLSX, XLS, and JSON bulk import
 - Individual or full-set JSON save/load
 - PNG, JPEG, and SVG export at 600 or 1,200 DPI; raster exports include physical-resolution metadata for print workflows

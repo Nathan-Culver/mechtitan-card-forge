@@ -224,7 +224,10 @@
   }
 
   function switchToCard(card) {
-    if (!card || card.id === currentId) return card;
+    if (!card) return card;
+    selected.clear();
+    selectionAnchorId = null;
+    if (card.id === currentId) { renderLibrary(); return card; }
     saveCurrent(false);
     history = [];
     historyIndex = -1;
@@ -1725,7 +1728,7 @@
     });
     if (window.MechTitanStudio?.onCardsDuplicated) window.MechTitanStudio.onCardsDuplicated(pairs);
     else pairs.forEach(({ source, copy }) => window.MechTitanStudio?.onCardDuplicated?.(source, copy));
-    selected.clear(); pairs.forEach(({ copy }) => selected.add(copy.id)); selectionAnchorId = pairs[0].copy.id;
+    selected.clear(); selectionAnchorId = null;
     history = []; historyIndex = -1;
     persist(); setFormData(pairs[0].copy); updateUndoButtons();
     toast(`${pairs.length} card${pairs.length === 1 ? '' : 's'} duplicated`);
