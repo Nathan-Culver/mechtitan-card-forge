@@ -5,6 +5,7 @@
   const STORAGE_KEY = 'mechtitan-card-forge-v1';
   const DATA_VERSION = 9;
   const ASSET_COLORS = { L: '#0b5fae', P: '#9c4dcc', S: '#EDD012', T: '#8b1e2d', U: '#117d45' };
+  const FRAME_POSITION_FIELDS = new Set(['nameX','nameY','rulesX','rulesY','flavorX','flavorY','constructionX','constructionY','operationX','operationY','cycleX','cycleY']);
   const form = document.querySelector('#cardForm');
   const canvas = document.querySelector('#cardCanvas');
   const ctx = canvas.getContext('2d');
@@ -1631,8 +1632,29 @@
     } catch (error) { toast(`Import failed: ${error.message}`); }
   }
 
-  form.addEventListener('input', () => {
-    updateOutputs(); render(); saveStatus.textContent = 'Unsaved changes';
+  function applyPositionToMatchingFrame(field, announce = false) {
+    if (!FRAME_POSITION_FIELDS.has(field)) return;
+    const staged = saveCurrent(false);
+    const value = staged[field];
+    let matchingCards = 0;
+    cards = cards.map(card => {
+      if (card.template !== staged.template) return card;
+      matchingCards += 1;
+      return normalizeCard({ ...card, [field]: value });
+    });
+    persist(); renderLibrary();
+    if (announce) toast(`Applied to ${matchingCards} card${matchingCards === 1 ? '' : 's'} with this frame`);
+  }
+
+  form.addEventListener('input', event => {
+    if (event.target.matches('[data-apply-frame]')) {
+      if (event.target.checked) applyPositionToMatchingFrame(event.target.dataset.applyFrame, true);
+      return;
+    }
+    const field = event.target.name;
+    const propagated = FRAME_POSITION_FIELDS.has(field) && document.querySelector(`[data-apply-frame="${field}"]`)?.checked;
+    if (propagated) applyPositionToMatchingFrame(field);
+    updateOutputs(); render(); saveStatus.textContent = propagated ? 'Saved locally' : 'Unsaved changes';
     clearTimeout(historyTimer); historyTimer = setTimeout(pushHistory, 350);
   });
   document.querySelector('#template').addEventListener('change', event => {

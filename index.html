@@ -6,10 +6,10 @@
   <meta name="description" content="A browser-based card studio for designing, managing, and exporting MechTitan TCG cards.">
   <title>MechTitan Card Forge</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23070b10' d='M6 8h52v48H6z'/%3E%3Cpath fill='%233cc8ff' d='m12 14 20 8 20-8-6 34-14 8-14-8z'/%3E%3Cpath fill='%23eaf8ff' d='m22 26 10 4 10-4-3 16-7 4-7-4z'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261005-4">
+  <link rel="stylesheet" href="styles.css?v=20261005-5">
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=20261005-4"></script>
-  <script defer src="studio.js?v=20261005-4"></script>
+  <script defer src="app.js?v=20261005-5"></script>
+  <script defer src="studio.js?v=20261005-5"></script>
 </head>
 <body>
   <header class="topbar">
@@ -191,23 +191,23 @@
           <fieldset class="position-fieldset">
             <legend>Text positioning</legend>
             <div class="grid-2 position-grid">
-              <div class="field"><label for="nameX">Name horizontal <output id="nameXOut">0</output></label><input id="nameX" name="nameX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="nameY">Name vertical <output id="nameYOut">0</output></label><input id="nameY" name="nameY" type="range" min="-50" max="50" value="0"></div>
-              <div class="field"><label for="rulesX">Ability horizontal <output id="rulesXOut">0</output></label><input id="rulesX" name="rulesX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="rulesY">Ability vertical <output id="rulesYOut">0</output></label><input id="rulesY" name="rulesY" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="flavorX">Flavor horizontal <output id="flavorXOut">0</output></label><input id="flavorX" name="flavorX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="flavorY">Flavor vertical <output id="flavorYOut">0</output></label><input id="flavorY" name="flavorY" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="nameX"><span>Name horizontal</span><span class="position-actions"><output id="nameXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="nameX" aria-label="Apply Name horizontal to all cards with this frame">Same frame</span></span></label><input id="nameX" name="nameX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="nameY"><span>Name vertical</span><span class="position-actions"><output id="nameYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="nameY" aria-label="Apply Name vertical to all cards with this frame">Same frame</span></span></label><input id="nameY" name="nameY" type="range" min="-50" max="50" value="0"></div>
+              <div class="field position-field"><label for="rulesX"><span>Ability horizontal</span><span class="position-actions"><output id="rulesXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="rulesX" aria-label="Apply Ability horizontal to all cards with this frame">Same frame</span></span></label><input id="rulesX" name="rulesX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="rulesY"><span>Ability vertical</span><span class="position-actions"><output id="rulesYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="rulesY" aria-label="Apply Ability vertical to all cards with this frame">Same frame</span></span></label><input id="rulesY" name="rulesY" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="flavorX"><span>Flavor horizontal</span><span class="position-actions"><output id="flavorXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="flavorX" aria-label="Apply Flavor horizontal to all cards with this frame">Same frame</span></span></label><input id="flavorX" name="flavorX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="flavorY"><span>Flavor vertical</span><span class="position-actions"><output id="flavorYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="flavorY" aria-label="Apply Flavor vertical to all cards with this frame">Same frame</span></span></label><input id="flavorY" name="flavorY" type="range" min="-100" max="100" value="0"></div>
             </div>
           </fieldset>
           <fieldset class="position-fieldset">
             <legend>Cost positioning</legend>
             <div class="grid-2 position-grid">
-              <div class="field"><label for="constructionX">Construction horizontal <output id="constructionXOut">0</output></label><input id="constructionX" name="constructionX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="constructionY">Construction vertical <output id="constructionYOut">0</output></label><input id="constructionY" name="constructionY" type="range" min="-50" max="50" value="0"></div>
-              <div class="field"><label for="operationX">Operation horizontal <output id="operationXOut">0</output></label><input id="operationX" name="operationX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="operationY">Operation vertical <output id="operationYOut">0</output></label><input id="operationY" name="operationY" type="range" min="-50" max="50" value="0"></div>
-              <div class="field"><label for="cycleX">Cycle horizontal <output id="cycleXOut">0</output></label><input id="cycleX" name="cycleX" type="range" min="-100" max="100" value="0"></div>
-              <div class="field"><label for="cycleY">Cycle vertical <output id="cycleYOut">0</output></label><input id="cycleY" name="cycleY" type="range" min="-50" max="50" value="0"></div>
+              <div class="field position-field"><label for="constructionX"><span>Construction horizontal</span><span class="position-actions"><output id="constructionXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="constructionX" aria-label="Apply Construction horizontal to all cards with this frame">Same frame</span></span></label><input id="constructionX" name="constructionX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="constructionY"><span>Construction vertical</span><span class="position-actions"><output id="constructionYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="constructionY" aria-label="Apply Construction vertical to all cards with this frame">Same frame</span></span></label><input id="constructionY" name="constructionY" type="range" min="-50" max="50" value="0"></div>
+              <div class="field position-field"><label for="operationX"><span>Operation horizontal</span><span class="position-actions"><output id="operationXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="operationX" aria-label="Apply Operation horizontal to all cards with this frame">Same frame</span></span></label><input id="operationX" name="operationX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="operationY"><span>Operation vertical</span><span class="position-actions"><output id="operationYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="operationY" aria-label="Apply Operation vertical to all cards with this frame">Same frame</span></span></label><input id="operationY" name="operationY" type="range" min="-50" max="50" value="0"></div>
+              <div class="field position-field"><label for="cycleX"><span>Cycle horizontal</span><span class="position-actions"><output id="cycleXOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="cycleX" aria-label="Apply Cycle horizontal to all cards with this frame">Same frame</span></span></label><input id="cycleX" name="cycleX" type="range" min="-100" max="100" value="0"></div>
+              <div class="field position-field"><label for="cycleY"><span>Cycle vertical</span><span class="position-actions"><output id="cycleYOut">0</output><span class="frame-apply"><input type="checkbox" data-apply-frame="cycleY" aria-label="Apply Cycle vertical to all cards with this frame">Same frame</span></span></label><input id="cycleY" name="cycleY" type="range" min="-50" max="50" value="0"></div>
             </div>
           </fieldset>
           <label class="toggle-row"><input id="showBleed" type="checkbox" checked><span>Show trim and bleed guides</span></label>
@@ -247,7 +247,7 @@
       <div class="panel-heading compact library-title"><div><span class="eyebrow">ACTIVE PROJECT</span><h2>Cards</h2></div><button id="newCardBtn" class="square" title="New card">＋</button></div>
       <div class="library-sticky-bar" aria-label="Card library navigation">
         <div class="library-tools">
-          <label class="select-all-row"><input id="selectAllCards" type="checkbox"><span>Select all cards in this project</span></label>
+          <label class="select-all-row"><input id="selectAllCards" type="checkbox"><span>Select all</span></label>
           <input id="searchCards" type="search" placeholder="Search cards" aria-label="Search cards">
           <select id="filterFaction" aria-label="Filter by faction"><option value="">All factions</option></select>
         </div>

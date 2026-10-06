@@ -14,7 +14,7 @@ A dependency-free, browser-based card editor for the MechTitan TCG. It is design
 - Live comprehensive Unit balance model with separate Static, Operational, and Economic Power; suggested Construction; cost variance; Battlefield Projection diagnostics; and configurable lifetime cost
 - Compact Power Rating summary with an on-demand BP breakdown
 - Safe rich-text rendering for card names, rules, and flavor text using standard inline HTML tags, inline CSS, and existing Markdown
-- Independent horizontal and vertical positioning controls for card names, rules text, flavor text, Construction, Operation, and Cycle, plus adjustable paragraph spacing
+- Independent horizontal and vertical positioning controls for card names, rules text, flavor text, Construction, Operation, and Cycle, with optional same-frame propagation, plus adjustable paragraph spacing
 - Artwork upload, crop positioning, frame themes, and typography controls
 - Multiple named card sets and decks with descriptions, cover cards, drag ordering, project-level statistics, and balance summaries
 - Self-contained public/unlisted and passphrase-encrypted private links for individual cards or complete projects, plus link import
